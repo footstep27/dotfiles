@@ -43,11 +43,11 @@ if [[ -n "$GHOSTTY_BIN" ]]; then
   if [[ ! -f "$CONFIG" ]]; then
     fail "ghostty config" "missing $CONFIG"
   else
-    OUT="$("$GHOSTTY_BIN" +validate-config --config-file="$CONFIG" 2>&1)"
-    if [[ -z "$OUT" ]]; then
+    CONFIG_ERRORS="$("$GHOSTTY_BIN" +validate-config --config-file="$CONFIG" 2>&1)"
+    if [[ -z "$CONFIG_ERRORS" ]]; then
       pass "ghostty config parses"
     else
-      fail "ghostty config parses" "$(printf '%s' "$OUT" | head -1)"
+      fail "ghostty config parses" "$(printf '%s' "$CONFIG_ERRORS" | head -1)"
     fi
   fi
 
@@ -89,25 +89,26 @@ fi
 
 # --------------------------------------------------------------- tmux config
 if command -v tmux >/dev/null 2>&1; then
-  SOCK="verify-$$"
-  if tmux -L "$SOCK" new-session -d 2>/dev/null; then
-    DT="$(tmux -L "$SOCK" show -g default-terminal 2>/dev/null)"
-    tmux -L "$SOCK" kill-server 2>/dev/null
-    if [[ "$DT" == *tmux-256color* ]]; then
-      pass "tmux config" "$DT"
+  SOCKET="verify-$$"
+  if tmux -L "$SOCKET" new-session -d 2>/dev/null; then
+    DEFAULT_TERMINAL="$(tmux -L "$SOCKET" show -g default-terminal 2>/dev/null)"
+    tmux -L "$SOCKET" kill-server 2>/dev/null
+    if [[ "$DEFAULT_TERMINAL" == *tmux-256color* ]]; then
+      pass "tmux config" "$DEFAULT_TERMINAL"
     else
-      fail "tmux config" "default-terminal is '$DT'"
+      fail "tmux config" "default-terminal is '$DEFAULT_TERMINAL'"
     fi
   else
     fail "tmux config" "server refused to start"
   fi
 
   # Plugins: present, and at the ref declared in the config
-  MISSING=(); WRONGREF=()
+  MISSING=(); WRONGREF=(); SPECS=0
   while IFS= read -r spec; do
     name="${spec%%#*}"; name="${name##*/}"
     ref="${spec##*#}"
     dir="$HOME/.tmux/plugins/$name"
+    SPECS=$((SPECS + 1))
     if [[ ! -d "$dir" ]]; then
       MISSING+=("$name")
       continue
@@ -115,11 +116,13 @@ if command -v tmux >/dev/null 2>&1; then
     actual="$(git -C "$dir" describe --tags --always 2>/dev/null)"
     if [[ "$actual" != "$ref" ]]; then WRONGREF+=("$name@$actual"); fi
   done < <(sed -n "s/^[[:space:]]*set -g @plugin '\(.*\)'.*/\1/p" "$HOME/.tmux.conf")
-  if [[ ${#MISSING[@]} -eq 0 && ${#WRONGREF[@]} -eq 0 ]]; then
-    pass "tmux plugins" "all present at pinned refs"
+  if (( SPECS == 0 )); then
+    fail "tmux plugins" "no @plugin lines readable from ~/.tmux.conf"
+  elif [[ ${#MISSING[@]} -eq 0 && ${#WRONGREF[@]} -eq 0 ]]; then
+    pass "tmux plugins" "$SPECS at pinned refs"
   else
     [[ ${#MISSING[@]} -gt 0 ]] && fail "tmux plugins" "missing: ${MISSING[*]}"
-    [[ ${#WRONGREF[@]} -gt 0 ]] && warn "tmux plugins" "off-pin: ${WRONGREF[*]}"
+    [[ ${#WRONGREF[@]} -gt 0 ]] && fail "tmux plugins" "off-pin: ${WRONGREF[*]}"
   fi
 else
   fail "tmux" "not installed"

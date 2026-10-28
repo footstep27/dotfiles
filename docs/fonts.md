@@ -4,7 +4,8 @@
 
 `Library/Fonts/MonoLisaNormal.ttf` and `Library/Fonts/MonoLisaItalic.ttf` are managed here
 and committed to this **private** repository, taken from the purchased originals and
-hash-verified against them.
+hash-verified against them. chezmoi stores them with `private_` path prefixes because the
+originals are mode `0600`; they stay owner-only on every machine.
 
 MonoLisa is commercial, licensed software. It is:
 

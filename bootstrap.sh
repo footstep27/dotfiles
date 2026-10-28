@@ -26,14 +26,6 @@ info() { printf '    %s%s%s\n' "$DIM" "$1" "$RESET"; }
 warn() { printf '%s    warn:%s %s\n' "$YELLOW" "$RESET" "$1"; }
 fail() { printf '%serror:%s %s\n' "$RED" "$RESET" "$1" >&2; exit 1; }
 
-run() {
-  if (( DRY_RUN )); then
-    info "would run: $*"
-  else
-    "$@"
-  fi
-}
-
 if (( DRY_RUN )); then
   printf '%sDRY RUN%s — nothing will be modified\n\n' "$YELLOW" "$RESET"
 fi
@@ -68,23 +60,55 @@ command -v chezmoi >/dev/null 2>&1 || (( DRY_RUN )) || fail "chezmoi missing aft
 # -------------------------------------------------------- 3. chezmoi source
 step "chezmoi source"
 CHEZMOI_CONFIG="$HOME/.config/chezmoi/chezmoi.toml"
-if [[ -f "$CHEZMOI_CONFIG" ]] && ! grep -q "^sourceDir *= *\"$ROOT\"" "$CHEZMOI_CONFIG"; then
+CHEZMOI_AGE_KEY="$HOME/.config/chezmoi/key.txt"
+
+if [[ -f "$CHEZMOI_CONFIG" ]] && grep -q '^sourceDir' "$CHEZMOI_CONFIG" \
+   && ! grep -q "^sourceDir *= *\"$ROOT\"" "$CHEZMOI_CONFIG"; then
   warn "$CHEZMOI_CONFIG points somewhere else:"
   warn "  $(grep '^sourceDir' "$CHEZMOI_CONFIG" || echo '(no sourceDir)')"
   warn "expected: sourceDir = \"$ROOT\""
   warn "fix it by hand, or remove the file and re-run"
   (( DRY_RUN )) || exit 1
 fi
-if ! grep -qs "^sourceDir *= *\"$ROOT\"" "$CHEZMOI_CONFIG"; then
-  if (( DRY_RUN )); then
-    info "would write $CHEZMOI_CONFIG (sourceDir = $ROOT)"
+
+# Never truncate this file: it may hold encryption settings we did not write.
+ensure_chezmoi_config() {
+  mkdir -p "$(dirname "$CHEZMOI_CONFIG")"
+  touch "$CHEZMOI_CONFIG"
+  if ! grep -q '^sourceDir' "$CHEZMOI_CONFIG"; then
+    printf 'sourceDir = "%s"\n' "$ROOT" >> "$CHEZMOI_CONFIG"
+    info "set sourceDir = $ROOT"
   else
-    mkdir -p "$(dirname "$CHEZMOI_CONFIG")"
-    printf 'sourceDir = "%s"\n' "$ROOT" > "$CHEZMOI_CONFIG"
-    info "wrote $CHEZMOI_CONFIG"
+    info "sourceDir already points at this checkout"
   fi
+
+  # age recipient: configured so the first encrypted file is one command away.
+  # Nothing in this repo is encrypted today.
+  if ! grep -q '^\[age\]' "$CHEZMOI_CONFIG"; then
+    if [[ ! -f "$CHEZMOI_AGE_KEY" ]]; then
+      age-keygen -o "$CHEZMOI_AGE_KEY" >/dev/null 2>&1 || {
+        warn "age-keygen failed — encryption stays unconfigured"
+        return 0
+      }
+      chmod 600 "$CHEZMOI_AGE_KEY"
+      info "generated age identity at $CHEZMOI_AGE_KEY"
+    fi
+    RECIPIENT="$(age-keygen -y "$CHEZMOI_AGE_KEY" 2>/dev/null || true)"
+    if [[ -n "$RECIPIENT" ]]; then
+      printf '\nencryption = "age"\n[age]\n    identity = "%s"\n    recipient = "%s"\n' \
+        "$CHEZMOI_AGE_KEY" "$RECIPIENT" >> "$CHEZMOI_CONFIG"
+      info "configured age recipient ${RECIPIENT:0:16}…"
+      info "back up the private key — a new machine cannot decrypt without it"
+    fi
+  else
+    info "age recipient already configured"
+  fi
+}
+
+if (( DRY_RUN )); then
+  info "would ensure $CHEZMOI_CONFIG (sourceDir, age recipient)"
 else
-  info "already points at this checkout"
+  ensure_chezmoi_config
 fi
 
 # ------------------------------------------------------------- 4. Backup drift
@@ -190,7 +214,11 @@ fi
 # ---------------------------------------------------------------- 8. Verify
 step "Verify"
 if [[ -x "$ROOT/scripts/verify.sh" ]]; then
-  run "$ROOT/scripts/verify.sh"
+  if (( DRY_RUN )); then
+    info "would run: $ROOT/scripts/verify.sh"
+  else
+    "$ROOT/scripts/verify.sh"
+  fi
 else
   warn "scripts/verify.sh not present — skipping verification"
 fi
