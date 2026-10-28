@@ -121,7 +121,40 @@ else
   chezmoi apply --verbose 2>&1 | sed 's/^/    /'
 fi
 
-# -------------------------------------------------------- 6. tmux plugins
+# -------------------------------------------------- 6. Ghostty terminfo
+# Ghostty keeps its terminfo inside the app bundle, where ncurses will not look.
+# tmux (and anything over ssh) needs TERM=xterm-ghostty to be resolvable, so the
+# bundled entries are copied into the standard per-user location.
+step "Ghostty terminfo"
+terminfo_src() {
+  for app in /Applications/Ghostty.app "$HOME/Applications/Ghostty.app"; do
+    if [[ -d "$app/Contents/Resources/terminfo" ]]; then
+      printf '%s' "$app/Contents/Resources/terminfo"
+      return 0
+    fi
+  done
+  return 1
+}
+if SRC="$(terminfo_src)"; then
+  if (( DRY_RUN )); then
+    info "would copy bundled terminfo into ~/.terminfo"
+  else
+    for entry in "$SRC"/*/; do
+      dir="$(basename "$entry")"
+      mkdir -p "$HOME/.terminfo/$dir"
+      cp -f "$entry"* "$HOME/.terminfo/$dir/" 2>/dev/null || true
+    done
+    if infocmp -x xterm-ghostty >/dev/null 2>&1; then
+      info "xterm-ghostty resolvable"
+    else
+      warn "terminfo copy did not take effect"
+    fi
+  fi
+else
+  warn "Ghostty bundle not found — skipping terminfo"
+fi
+
+# -------------------------------------------------------- 7. tmux plugins
 # TPM installs missing plugins but never checks out the ref declared after '#',
 # so the pins are applied explicitly here.
 step "tmux plugins"
@@ -154,7 +187,7 @@ else
   info "plugins: $(ls "$HOME/.tmux/plugins" | tr '\n' ' ')"
 fi
 
-# ---------------------------------------------------------------- 7. Verify
+# ---------------------------------------------------------------- 8. Verify
 step "Verify"
 if [[ -x "$ROOT/scripts/verify.sh" ]]; then
   run "$ROOT/scripts/verify.sh"
