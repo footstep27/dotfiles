@@ -25,7 +25,7 @@ cursor-style-blink = false
 # cannot be redistributed — see docs/fonts.md.
 font-family = MonoLisa
 font-family = Symbols Nerd Font Mono
-font-size = 14
+font-size = 13
 
 # ---------- Behaviour ----------
 scrollback-limit-lines = 10000
