@@ -3,8 +3,12 @@
 # Verify with: scripts/verify.sh
 
 # ---------- Appearance ----------
-# Follows macOS appearance: light mode gets Latte, dark gets Mocha.
-theme = light:Catppuccin Latte,dark:Catppuccin Mocha
+# Fixed dark theme on purpose. macOS appearance switching is deliberately not
+# followed: the tmux status bar is pinned to Mocha (tmux cannot observe the
+# appearance switch), and a light terminal under a dark bar reads as broken.
+theme = Catppuccin Mocha
+# Keep the macOS window frame dark to match, even when the system is in light mode.
+window-theme = dark
 background-opacity = 0.96
 background-blur = 20
 macos-titlebar-style = transparent

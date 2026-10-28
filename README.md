@@ -84,9 +84,13 @@ later, `chezmoi add` it.
 - **Option stays a character key** on the German layout (`macos-option-as-alt = false`).
   Option types `@ { } [ ] | \ ~ €`; word movement lives on `Ctrl+Left/Right` and
   `Ctrl+Backspace`, bound explicitly in `.zshrc`.
+- **The theme is fixed Mocha, not system-following.** tmux cannot observe the macOS
+  appearance switch, so its status bar is pinned to Mocha; a light Catppuccin Latte terminal
+  under a dark bar reads as broken. `window-theme = dark` keeps the macOS frame matching even
+  when the system is in light mode. Switching to Latte later means also giving up the tmux
+  bar's consistency (or scripting `@catppuccin_flavor` per attach).
 - **tmux is for persistence, not for splitting.** Long-running work in named sessions;
-  trivial side-by-side work in Ghostty's native splits. The status bar stays Catppuccin
-  Mocha because tmux cannot observe the macOS appearance switch.
+  trivial side-by-side work in Ghostty's native splits.
 - **Scrollback is capped at 10,000 lines** and window state restore is off, because tmux
   owns persistence.
 - **MonoLisa ships as a variable pair** (no separate Bold), so bold is synthesized. The
