@@ -94,16 +94,23 @@ installed only on request.
 
 ```sh
 chezmoi add ~/.config/foo/config    # track a live file (writes dot_config/foo/config here)
+chezmoi add --secrets error ~/.foo  # same, but abort instead of warning on secret-like content
 chezmoi add --encrypt ~/.secret     # age-encrypted source file
 ```
 
 Rules for this repo:
 
 - Anything that should land in `$HOME` belongs in the source tree as `dot_*` / `dot_config/…`.
-- Anything repo-only (docs, scripts, skills, manifests) must be listed in `.chezmoiignore` —
-  `docs/`, `scripts/`, `.agents/`, `README.md`, and the Brewfiles already are.
+- Anything repo-only (docs, scripts, project skills, manifests) must be listed in
+  `.chezmoiignore` — `docs/`, `scripts/`, `.opencode/`, `README.md`, and the Brewfiles already are.
+- Prefer `--secrets error` when adding files. `verify.sh` also fails if a known secret or
+  state path becomes managed.
 - Encryption is wired (age) but idle. Back up `~/.config/chezmoi/key.txt` before the first
   secret depends on it; a new machine cannot decrypt without it.
+
+Global agent skills are installed and updated by the skills CLI, which writes
+`~/.agents/skills` and `.skill-lock.json`. Both are managed here, so after adding or updating
+skills run `chezmoi re-add ~/.agents`, review, commit, and push.
 
 ## New machine
 
@@ -133,13 +140,17 @@ The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore i
 | TUIs | `yazi` config, `btop` config and its Catppuccin Mocha theme |
 | Fonts | the licensed MonoLisa pair (see `docs/fonts.md`) |
 | Git | global `.gitconfig` |
-| Agent skills | `.agents/skills/diagram-design/` — repo-local, discoverable by agents working here, not copied into `$HOME` |
+| OpenCode | `~/.config/opencode/cli.json` (theme, diffs, session UI) and `opencode.jsonc` (global config) |
+| Agent skills | global `~/.agents/skills` + `.skill-lock.json`; the project skill lives in `.opencode/skills/diagram-design/` (repo-only) |
 | Packages | `Brewfile` (required), `Brewfile.optional` (snapshot, installed on request) |
 
-Deliberately **not** managed: credentials (GPG keys, `gh`, codex/opencode auth), opencode's
-own config directory (it self-manages, including a plugin tree with `node_modules`), nvim
-config, shell histories, Oh My Zsh (Homebrew-vendored), tmux plugin trees, the WezTerm theme
-repository clone, `yazi` flavors/plugins.
+Deliberately **not** managed: credentials (GPG keys, `gh`), OpenCode secrets and state
+(`~/.local/share/opencode/auth.json`, both `service.json` files, `opencode.db*`, plugin
+`node_modules`), nvim config, shell histories, Oh My Zsh (Homebrew-vendored), tmux plugin
+trees, the WezTerm theme repository clone, `yazi` flavors/plugins.
+
+Those OpenCode paths are listed in `.chezmoiignore` as guards, and `verify.sh` fails if any of
+them ever ends up in the source.
 
 `~/.vim` contains only netrw's history file, so it stays unmanaged. If it ever gets real
 config, `chezmoi add` it.
@@ -182,8 +193,9 @@ scripts/verify.sh       behaviour checks for the applied machine
 Brewfile                required packages
 Brewfile.optional       snapshot of the rest of the inventory
 dot_* / dot_config/     chezmoi-managed configs (names map to $HOME)
+dot_agents/             global agent skills + lockfile (chezmoi-managed)
 dot_tmux.conf           tmux, including pinned plugin refs
-.agents/skills/         agent skills, repo-local (chezmoi-ignored)
+.opencode/skills/       project skill, repo-only (chezmoi-ignored)
 docs/                   fonts, themes, decisions, diagram sources
 ```
 
@@ -191,7 +203,7 @@ The README diagram is generated, not hand-drawn: edit `docs/diagrams/repo-overvi
 (and `-dark.html`), then re-export with the diagram-design skill:
 
 ```sh
-python3 .agents/skills/diagram-design/scripts/export_svg.py \
+python3 .opencode/skills/diagram-design/scripts/export_svg.py \
   docs/diagrams/repo-overview.html docs/diagrams/repo-overview.svg --system-fonts
 ```
 
