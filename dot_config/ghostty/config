@@ -36,3 +36,29 @@ macos-non-native-fullscreen = false
 # ---------- Shell integration ----------
 shell-integration = zsh
 shell-integration-features = cursor,sudo,title,path
+
+# ---------- Keyboard ----------
+# macOS German layout types @, {, }, [, ], |, \, ~ and € with Option. Turning
+# Option into a Meta key would make those characters unreachable from the
+# terminal. Word movement lives on Ctrl+Arrow instead (bound in .zshrc).
+macos-option-as-alt = false
+
+# Tabs
+keybind = super+t=new_tab
+keybind = super+w=close_surface
+keybind = ctrl+tab=next_tab
+keybind = ctrl+shift+tab=previous_tab
+
+# Splits
+keybind = super+d=new_split:right
+keybind = super+shift+d=new_split:down
+keybind = super+shift+enter=toggle_split_zoom
+keybind = super+ctrl+equal=equalize_splits
+
+# Split navigation on Cmd+Ctrl+Arrows.
+# Deliberately NOT the defaults (Cmd+Option+Arrows, Cmd+[ / Cmd+]): brackets are
+# Option+5/6 on a German layout, and bare Ctrl+Arrow belongs to the shell.
+keybind = super+ctrl+arrow_left=goto_split:left
+keybind = super+ctrl+arrow_right=goto_split:right
+keybind = super+ctrl+arrow_up=goto_split:up
+keybind = super+ctrl+arrow_down=goto_split:down
