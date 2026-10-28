@@ -1,0 +1,12 @@
+# chezmoi must not try to map repo infrastructure into $HOME
+README.md
+docs/
+scripts/
+.agents/
+.scratch/
+.gitignore
+.chezmoiignore
+Brewfile
+Brewfile.optional
+bootstrap.sh
+LICENSE
