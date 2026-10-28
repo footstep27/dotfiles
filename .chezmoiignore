@@ -2,7 +2,7 @@
 README.md
 docs/
 scripts/
-.agents/
+.opencode/
 .scratch/
 .gitignore
 .chezmoiignore
@@ -10,3 +10,12 @@ Brewfile
 Brewfile.optional
 bootstrap.sh
 LICENSE
+
+# OpenCode secrets and machine-local state never belong in git.
+# These are target paths, so they guard against a future `chezmoi add --recursive`.
+.config/opencode/service.json
+.config/opencode/package.json
+.config/opencode/package-lock.json
+.config/opencode/node_modules/
+.local/share/opencode/
+.local/state/opencode/
