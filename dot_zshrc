@@ -8,6 +8,11 @@ fi
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 
+# Deduplicate PATH. Homebrew reaches PATH from three places (/etc/paths.d via
+# path_helper, `brew shellenv` in .zprofile, and inherited environments), so
+# uniqueness is enforced here instead of chasing each source.
+typeset -U path PATH
+
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
@@ -124,12 +129,35 @@ export PATH="$HOME/Library/Application Support/Herd/bin/":$PATH
 # opencode
 export PATH=$HOME/.opencode/bin:$PATH
 export GPG_TTY=$(tty)
-export PATH="/opt/homebrew/bin:$PATH"
+
+# Homebrew: .zprofile runs `brew shellenv` for login shells. Add it for
+# non-login shells too, but only when absent, so PATH never carries it twice.
+if [[ ":$PATH:" != *":/opt/homebrew/bin:"* ]]; then
+  export PATH="/opt/homebrew/bin:$PATH"
+fi
 
 source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 alias ls="eza --icons"
+
+# cli tooling adopted with this setup; each degrades to the original command if
+# the binary is missing (bat falls back to cat, delta is only reachable via git).
+if command -v bat >/dev/null 2>&1; then
+  alias cat='bat --paging=never'
+fi
+if command -v lazygit >/dev/null 2>&1; then
+  alias lg='lazygit'
+fi
+
+# Word-wise editing.
+# Option is a character key on the macOS German layout (@ { } [ ] | \ ~ €), so
+# Alt+B / Alt+F style movement is unavailable. Ctrl+Arrow is bound explicitly
+# rather than relying on terminfo agreeing, and Ctrl+Backspace deletes a word.
+bindkey '^[[1;5D' backward-word        # Ctrl+Left
+bindkey '^[[1;5C' forward-word         # Ctrl+Right
+bindkey '^[^?' backward-kill-word      # Ctrl+Backspace (ESC DEL)
+bindkey '^H' backward-kill-word        # Ctrl+Backspace (^H) where sent
 
 function y() {
 	local tmp cwd; tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
