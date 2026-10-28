@@ -1,0 +1,17 @@
+[plugin]
+deps = []
+
+[[flavor.deps]]
+use = "kmlupreti/ayu-dark"
+rev = "00804da"
+hash = "d2ce8358c59ea6e8552091075b3a191c"
+
+[[flavor.deps]]
+use = "yazi-rs/flavors:dracula"
+rev = "20b47bf"
+hash = "40136c9a02e166067a36d9ad618887f2"
+
+[[flavor.deps]]
+use = "yazi-rs/flavors:catppuccin-mocha"
+rev = "20b47bf"
+hash = "ce320f877fe709b189433941aba747c4"

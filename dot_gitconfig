@@ -1,0 +1,11 @@
+[user]
+	name = flowinho
+	email = footstep27@users.noreply.github.com
+	signingkey = F0EE915E82B3E9CBCFA15121091DEF5773661ED3
+[gpg]
+	format = openpgp
+	program = /opt/homebrew/bin/gpg
+[commit]
+	gpgsign = false
+[tag]
+	gpgsign = false
