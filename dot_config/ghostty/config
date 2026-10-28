@@ -1,0 +1,38 @@
+# Ghostty configuration
+# Managed by chezmoi — edit the copy in the dotfiles repo, not this file.
+# Verify with: scripts/verify.sh
+
+# ---------- Appearance ----------
+# Follows macOS appearance: light mode gets Latte, dark gets Mocha.
+theme = light:Catppuccin Latte,dark:Catppuccin Mocha
+background-opacity = 0.96
+background-blur = 20
+macos-titlebar-style = transparent
+window-padding-x = 12
+window-padding-y = 10
+window-padding-balance = true
+unfocused-split-opacity = 0.75
+cursor-style = block
+cursor-style-blink = false
+
+# ---------- Typography ----------
+# MonoLisa renders text; the symbols-only Nerd Font fills powerline separators
+# and file icons used by the prompt and `eza --icons`. MonoLisa is licensed and
+# cannot be redistributed — see docs/fonts.md.
+font-family = MonoLisa
+font-family = Symbols Nerd Font Mono
+font-size = 14
+
+# ---------- Behaviour ----------
+scrollback-limit-lines = 10000
+copy-on-select = clipboard
+confirm-close-surface = true
+mouse-hide-while-typing = true
+# tmux owns persistence; restoring stale windows fights it.
+window-save-state = never
+auto-update-channel = stable
+macos-non-native-fullscreen = false
+
+# ---------- Shell integration ----------
+shell-integration = zsh
+shell-integration-features = cursor,sudo,title,path
