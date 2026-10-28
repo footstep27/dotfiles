@@ -52,7 +52,7 @@ the Brewfile is satisfied — not the contents of config files.
 | Ghostty | `~/.config/ghostty/config` |
 | tmux | `.tmux.conf` (plugins pinned here, installed via TPM) |
 | WezTerm | `.wezterm.lua` + the one theme file actually used |
-| TUIs | `yazi` config only |
+| TUIs | `yazi` config, `btop` config and its Catppuccin Mocha theme |
 | Fonts | the licensed MonoLisa pair (see `docs/fonts.md`) |
 | Git | global `.gitconfig` |
 | Packages | `Brewfile` (required), `Brewfile.optional` (snapshot, installed on request) |
@@ -62,10 +62,9 @@ own config directory (it self-manages, including a plugin tree with `node_module
 config, shell histories, Oh My Zsh (Homebrew-vendored), tmux plugin trees, the WezTerm
 theme repository clone, `yazi` flavors/plugins.
 
-Two entries in the original plan are empty on this machine and therefore unmanaged:
-`~/.vim` contains only netrw's history file, and `~/.config/btop` is an empty `themes/`
-directory with no `btop.conf`. Managing them would track noise. If either gets real config
-later, `chezmoi add` it.
+One entry in the original plan is empty on this machine and therefore unmanaged: `~/.vim`
+contains only netrw's history file, so there is nothing worth tracking. If it gets real
+config later, `chezmoi add` it.
 
 ## Two steps that stay manual
 

@@ -69,6 +69,26 @@ else
   warn "font checks" "skipped, Ghostty not found"
 fi
 
+# ---------------------------------------------------------------- btop theme
+if command -v btop >/dev/null 2>&1; then
+  BTOP_CONFIG="$HOME/.config/btop/btop.conf"
+  BTOP_THEME="$(awk -F'"' '/^color_theme/ {print $2}' "$BTOP_CONFIG" 2>/dev/null)"
+  case "$BTOP_THEME" in
+    ""|Default|TTY)
+      pass "btop theme" "${BTOP_THEME:-builtin}"
+      ;;
+    *)
+      if [[ -f "$HOME/.config/btop/themes/$BTOP_THEME.theme" ]]; then
+        pass "btop theme" "$BTOP_THEME"
+      else
+        fail "btop theme" "config names '$BTOP_THEME' but that theme file is missing"
+      fi
+      ;;
+  esac
+else
+  fail "btop" "not installed"
+fi
+
 # --------------------------------------------------------------- Shell loads
 # A pty is used on purpose: p10k/gitstatus prints a spurious "restart zsh"
 # notice when stdin is not a terminal, which is not a real error.

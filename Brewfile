@@ -6,6 +6,7 @@ brew "age"
 brew "tmux"
 
 # CLI tools the shell config depends on
+brew "btop"
 brew "eza"
 brew "bat"
 brew "git-delta"
