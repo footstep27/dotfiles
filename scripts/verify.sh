@@ -166,6 +166,41 @@ else
   fail "homebrew" "not installed"
 fi
 
+# -------------------------------------------------- OpenCode and agent skills
+# Secrets and machine-local state must never enter the source. These fail
+# instead of warn: a leak is never acceptable, even on an otherwise healthy
+# machine. The guard list lives in .chezmoiignore as well.
+if command -v chezmoi >/dev/null 2>&1; then
+  LEAKED="$(chezmoi managed --path-style absolute 2>/dev/null \
+    | grep -E '/(auth\.json|service\.json|opencode\.db(-wal|-shm)?)$' || true)"
+  if [[ -z "$LEAKED" ]]; then
+    pass "secrets unmanaged" "no auth/service/db in source"
+  else
+    fail "secrets unmanaged" "$(printf '%s' "$LEAKED" | head -1)"
+  fi
+
+  if command -v python3 >/dev/null 2>&1 \
+     && python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$HOME/.config/opencode/cli.json" 2>/dev/null; then
+    pass "opencode config" "cli.json parses"
+  else
+    fail "opencode config" "~/.config/opencode/cli.json missing or invalid"
+  fi
+
+  if [[ -n "$(grep -rlE '"(password|apiKey|api_key|secret|token)"[[:space:]]*:' \
+        "$ROOT/dot_config/opencode" 2>/dev/null)" ]]; then
+    fail "opencode config" "secret-shaped key in a managed file"
+  else
+    pass "opencode config" "no secret-shaped keys"
+  fi
+
+  SKILLS="$(find "$HOME/.agents/skills" -name SKILL.md 2>/dev/null | wc -l | tr -d ' ')"
+  if [[ "$SKILLS" -gt 0 ]]; then
+    pass "agent skills" "$SKILLS global skills"
+  else
+    warn "agent skills" "none in ~/.agents/skills — run chezmoi apply"
+  fi
+fi
+
 # ------------------------------------------------------------- chezmoi drift
 if command -v chezmoi >/dev/null 2>&1; then
   if [[ -z "$(chezmoi diff 2>/dev/null)" ]]; then
