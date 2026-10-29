@@ -1,2 +1,32 @@
 [flavor]
-dark = "dracula"
+dark = "catppuccin-macchiato"
+
+# Higher-contrast overrides. Yazi merges theme.toml after the flavor, so
+# these take precedence while the palette stays Catppuccin.
+[mgr]
+border_style   = { fg = "#939ab7" }
+symlink_target = { fg = "#939ab7", italic = true }
+
+[status]
+overall  = { bg = "#181926" }
+perm_sep = { fg = "#939ab7" }
+
+[which]
+separator_style = { fg = "#939ab7" }
+
+[filetype]
+rules = [
+	# Image
+	{ mime = "**/image/*", fg = "#8bd5ca" },
+	# Media
+	{ mime = "**/{audio,video}/*", fg = "#eed49f" },
+	# Archive
+	{ mime = "**/application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#f5bde6" },
+	# Document
+	{ mime = "**/application/{pdf,doc,rtf}", fg = "#a6da95" },
+	# Virtual file system
+	{ mime = "vfs/{absent,stale}", fg = "#939ab7" },
+	# Fallback
+	{ url = "*", fg = "#cad3f5" },
+	{ url = "*/", fg = "#8aadf4", bold = true },
+]

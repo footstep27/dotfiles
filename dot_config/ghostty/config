@@ -4,13 +4,13 @@
 
 # ---------- Appearance ----------
 # Fixed dark theme on purpose. macOS appearance switching is deliberately not
-# followed: the tmux status bar is pinned to Mocha (tmux cannot observe the
+# followed: the tmux status bar is pinned to Macchiato (tmux cannot observe the
 # appearance switch), and a light terminal under a dark bar reads as broken.
-theme = Catppuccin Mocha
+theme = Catppuccin Macchiato
 # Keep the macOS window frame dark to match, even when the system is in light mode.
 window-theme = dark
-background-opacity = 0.96
-background-blur = 20
+background-opacity = 1.0
+background-blur = 0
 macos-titlebar-style = transparent
 window-padding-x = 12
 window-padding-y = 10

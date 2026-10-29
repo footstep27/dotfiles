@@ -137,7 +137,7 @@ The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore i
 | Ghostty | `~/.config/ghostty/config` |
 | tmux | `.tmux.conf` (plugins pinned here, installed via TPM) |
 | WezTerm | `.wezterm.lua` + the one theme file actually used |
-| TUIs | `yazi` config, `btop` config and its Catppuccin Mocha theme |
+| TUIs | `yazi` config, `btop` config and its Catppuccin Macchiato theme |
 | Fonts | the licensed MonoLisa pair (see `docs/fonts.md`) |
 | Git | global `.gitconfig` |
 | OpenCode | `~/.config/opencode/cli.json` (theme, diffs, session UI) and `opencode.jsonc` (global config) |
@@ -216,9 +216,9 @@ python3 .opencode/skills/diagram-design/scripts/export_svg.py \
 - **Option stays a character key** on the German layout (`macos-option-as-alt = false`).
   Option types `@ { } [ ] | \ ~ €`; word movement lives on `Ctrl+Left/Right` and
   `Ctrl+Backspace`, bound in `.zshrc`.
-- **The theme is fixed Mocha, not system-following.** tmux cannot observe the macOS appearance
-  switch, so the status bar stays Mocha; `window-theme = dark` keeps the frame matching.
-  See [`docs/themes.md`](docs/themes.md) for switching.
+- **The theme is fixed Macchiato, not system-following.** tmux cannot observe the macOS
+  appearance switch, so the status bar stays Macchiato; `window-theme = dark` keeps the frame
+  matching. See [`docs/themes.md`](docs/themes.md) for switching.
 - **tmux is for persistence, not splitting.** Long-running work in named sessions; quick
   side-by-side work in Ghostty's native splits. Scrollback is capped at 10,000 lines and
   window restore is off because tmux owns persistence.
