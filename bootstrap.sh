@@ -6,7 +6,8 @@
 #
 # Idempotent: safe to re-run after a partial failure or to pick up updates.
 # Order matters — brew → required packages → chezmoi/age → apply → tmux plugins
-# → verify — because chezmoi must write the configs before anything reads them.
+# → yazi packages → verify — because chezmoi must write the configs before
+# anything reads them.
 
 set -euo pipefail
 
@@ -211,7 +212,20 @@ else
   info "plugins: $(ls "$HOME/.tmux/plugins" | tr '\n' ' ')"
 fi
 
-# ---------------------------------------------------------------- 8. Verify
+# -------------------------------------------------------- 8. yazi packages
+# Flavors and plugins are not vendored; package.toml pins them and `ya`
+# installs the exact refs recorded there.
+step "yazi packages"
+if (( DRY_RUN )); then
+  info "would install yazi packages pinned in ~/.config/yazi/package.toml"
+elif command -v ya >/dev/null 2>&1; then
+  ya pkg install
+  info "packages: $(ya pkg list 2>/dev/null | tail -n +2 | tr '\n' ' ')"
+else
+  warn "ya not found — skipping yazi packages"
+fi
+
+# ---------------------------------------------------------------- 9. Verify
 step "Verify"
 if [[ -x "$ROOT/scripts/verify.sh" ]]; then
   if (( DRY_RUN )); then

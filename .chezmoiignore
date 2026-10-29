@@ -19,3 +19,8 @@ LICENSE
 .config/opencode/node_modules/
 .local/share/opencode/
 .local/state/opencode/
+
+# yazi packages are declared in package.toml and restored with `ya pkg install`;
+# their trees must not drift into the source via `chezmoi add --recursive`.
+.config/yazi/plugins/
+.config/yazi/flavors/

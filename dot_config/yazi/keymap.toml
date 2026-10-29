@@ -128,6 +128,10 @@ keymap = [
 	{ on = [ ",", "S" ], run = [ "sort size --reverse=yes", "linemode size" ],   desc = "Sort by size (reverse)" },
 	{ on = [ ",", "r" ], run = "sort random --reverse=no",                       desc = "Sort randomly" },
 
+	# Size
+	{ on = "M", run = "plugin what-size",                desc = "Calculate size of selection or current directory" },
+	{ on = "C", run = "plugin what-size -- '-c'",        desc = "Calculate size of selection or current directory + copy to clipboard" },
+
 	# Goto
 	{ on = [ "g", "h" ],       run = "cd ~",             desc = "Go home" },
 	{ on = [ "g", "c" ],       run = "cd ~/.config",     desc = "Go to ~/.config" },

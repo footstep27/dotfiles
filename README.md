@@ -147,7 +147,8 @@ The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore i
 Deliberately **not** managed: credentials (GPG keys, `gh`), OpenCode secrets and state
 (`~/.local/share/opencode/auth.json`, both `service.json` files, `opencode.db*`, plugin
 `node_modules`), nvim config, shell histories, Oh My Zsh (Homebrew-vendored), tmux plugin
-trees, the WezTerm theme repository clone, `yazi` flavors/plugins.
+trees, the WezTerm theme repository clone, `yazi` flavors/plugins (declared in
+`package.toml` and restored with `ya pkg install`).
 
 Those OpenCode paths are listed in `.chezmoiignore` as guards, and `verify.sh` fails if any of
 them ever ends up in the source.
