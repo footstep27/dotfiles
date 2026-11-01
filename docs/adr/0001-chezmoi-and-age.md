@@ -17,10 +17,10 @@ Consequences worth knowing:
   Everything credential-shaped (GPG keys, `gh` auth, codex/opencode auth) stays out of the
   repository by decision, so there is nothing to encrypt yet. The first secret is
   `chezmoi add --encrypt`.
-- **MonoLisa is committed in plaintext**, not encrypted. That was a separate, explicit
-  decision: the repository is private, and the font must reach a new machine without a key
-  handoff. See `docs/fonts.md` for the licensing constraint that makes this a deliberate
-  risk rather than an oversight.
+- **MonoLisa was committed in plaintext** while the repository was private, so the font
+  reached a new machine without a key handoff. That is no longer possible: the font is
+  commercial and not redistributable, so it stopped being managed here when the repository
+  was published. See [ADR 0002](0002-publishing-the-repository.md) and `docs/fonts.md`.
 - **The age private key is not in the repository.** If encryption is ever used, the key has
   to be backed up outside the repo (password manager), or a fresh machine cannot decrypt.
 

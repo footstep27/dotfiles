@@ -14,6 +14,10 @@ belong here, and one command puts them on the machine.
 Setting up a fresh Mac? [Jump to the bootstrap steps](#new-machine). Otherwise the loop below
 is all you need.
 
+These are my own settings, published so they can be read and borrowed from. Clone and adapt
+them to your machine rather than applying them verbatim; there is no support and no promise
+that a checkout from today still applies cleanly next month.
+
 ## Daily work
 
 Four commands cover almost everything:
@@ -138,7 +142,7 @@ The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore i
 | tmux | `.tmux.conf` (plugins pinned here, installed via TPM) |
 | WezTerm | `.wezterm.lua` + the one theme file actually used |
 | TUIs | `yazi` config, `btop` config and its Catppuccin Macchiato theme |
-| Fonts | the licensed MonoLisa pair (see `docs/fonts.md`) |
+| Fonts | nothing managed — install your own licensed MonoLisa (see `docs/fonts.md`) |
 | Git | global `.gitconfig` |
 | OpenCode | `~/.config/opencode/cli.json` (theme, diffs, session UI) and `opencode.jsonc` (global config) |
 | Agent skills | global `~/.agents/skills` + `.skill-lock.json`; the project skill lives in `.opencode/skills/diagram-design/` (repo-only) |
@@ -172,8 +176,9 @@ Brewfile is satisfied.
 1. **Default terminal app.** macOS has no dependable CLI for this. Set Ghostty as the default
    in System Settings (or via Finder's "Open With"). iTerm2 and WezTerm stay installed as
    fallbacks.
-2. **MonoLisa, if missing.** Licensed software, so no Homebrew formula. `verify.sh` reports a
-   warning and the terminals fall back through the font chain. See `docs/fonts.md`.
+2. **MonoLisa, if missing.** Licensed software, so it is not distributed here and has no
+   Homebrew formula. `verify.sh` reports a warning and the terminals fall back through the
+   font chain. See `docs/fonts.md`.
 
 ## Troubleshooting
 
@@ -227,3 +232,10 @@ python3 .opencode/skills/diagram-design/scripts/export_svg.py \
 - **`tmux-cpu` is pinned to a commit, not a tag** — the only plugin whose upstream publishes
   no tags (`#bcb110d`).
 - **`core.editor` is deliberately unset.** Interactive committing goes through `lazygit`.
+
+## Licence
+
+MIT — see [`LICENSE`](LICENSE). Third-party material keeps its own terms: the vendored agent
+skills, Catppuccin themes and Tabler icons are MIT with attribution collected in
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). MonoLisa is commercial and is **not**
+included; see [`docs/fonts.md`](docs/fonts.md).
