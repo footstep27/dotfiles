@@ -20,11 +20,11 @@ cursor-style = block
 cursor-style-blink = false
 
 # ---------- Typography ----------
-# MonoLisa renders text; the symbols-only Nerd Font fills powerline separators
-# and file icons used by the prompt and `eza --icons`. MonoLisa is licensed and
-# cannot be redistributed — see docs/fonts.md.
-font-family = MonoLisa
-font-family = Symbols Nerd Font Mono
+# Maple Mono NF renders text and supplies the Nerd Font glyphs the prompt,
+# `eza --icons` and tmux status segments use — one font, no fallback needed.
+# Free (OFL 1.1) and declared in the Brewfile, unlike MonoLisa, which cannot be
+# redistributed. See docs/fonts.md.
+font-family = Maple Mono NF
 font-size = 13
 
 # ---------- Behaviour ----------

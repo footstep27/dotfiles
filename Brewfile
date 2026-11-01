@@ -1,5 +1,4 @@
 # Everything this setup requires. Installed by bootstrap.sh and checked by verify.sh.
-# Licensed software (MonoLisa) is deliberately absent: it is not redistributable.
 
 brew "chezmoi"
 brew "age"
@@ -20,8 +19,8 @@ brew "zsh-syntax-highlighting"
 # Terminal
 cask "ghostty"
 
-# Icons-only fallback for MonoLisa (powerline separators, file icons)
-cask "font-symbols-only-nerd-font"
+# Text face and icon set in one font: covers Nerd Font glyphs, nothing manual
+cask "font-maple-mono-nf"
 
 # Agent CLI; .config/opencode is managed below
 brew "opencode"

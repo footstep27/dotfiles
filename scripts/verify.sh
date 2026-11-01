@@ -151,8 +151,9 @@ if command -v chezmoi >/dev/null 2>&1; then
 fi
 
 # ------------------------------------------------------- licensed assets guard
-# MonoLisa is commercial and must never be committed. `chezmoi add --recursive`
-# is the command that would do it by accident, so check the index, not $HOME.
+# A commercial font must never be committed: it cannot be redistributed, and
+# `chezmoi add --recursive` is the command that would do it by accident. Check
+# the index, not $HOME. Nothing here needs a font binary any more.
 if command -v git >/dev/null 2>&1 && [[ -d "$ROOT/.git" ]]; then
   TRACKED_FONTS="$(git -C "$ROOT" ls-files | grep -Ei '(^private_Library/)|\.(ttf|otf|ttc)$' || true)"
   if [[ -z "$TRACKED_FONTS" ]]; then
@@ -196,18 +197,20 @@ if [[ -n "$GHOSTTY_BIN" ]]; then
   fi
 
   # ----------------------------------------------------------- Font fallback
-  # 0x61 = 'a' (text face), 0xf07b = nerd font folder glyph (fallback face)
+  # 0x61 = 'a' (text), 0xf07b = nerd font folder glyph, 0xe5ff = nerd font
+  # icon. One font must answer all three: Maple Mono NF ships the icon set, so
+  # there is no separate symbols fallback to keep in sync.
   TEXT_FACE="$("$GHOSTTY_BIN" +show-face --cp=0x61 2>/dev/null | head -1)"
   ICON_FACE="$("$GHOSTTY_BIN" +show-face --cp=0xf07b 2>/dev/null | head -1)"
-  if [[ "$TEXT_FACE" == *MonoLisa* ]]; then
-    pass "font: text face" "MonoLisa"
+  if [[ "$TEXT_FACE" == *"Maple Mono NF"* ]]; then
+    pass "font: text face" "Maple Mono NF"
   else
-    warn "font: text face" "not MonoLisa (licensed font missing?) — see docs/fonts.md"
+    fail "font: text face" "expected Maple Mono NF — run: brew bundle install --file=$ROOT/Brewfile"
   fi
-  if [[ "$ICON_FACE" == *"Symbols Nerd Font"* ]]; then
-    pass "font: icon fallback" "Symbols Nerd Font Mono"
+  if [[ "$ICON_FACE" == *"Maple Mono NF"* ]]; then
+    pass "font: icons" "drawn by the text face"
   else
-    fail "font: icon fallback" "icons would render as boxes"
+    fail "font: icons" "icons would render as boxes — see docs/fonts.md"
   fi
 else
   warn "font checks" "skipped, Ghostty not found"
