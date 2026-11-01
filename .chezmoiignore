@@ -10,6 +10,7 @@ Brewfile
 Brewfile.optional
 bootstrap.sh
 LICENSE
+THIRD-PARTY-NOTICES.md
 
 # OpenCode secrets and machine-local state never belong in git.
 # These are target paths, so they guard against a future `chezmoi add --recursive`.
