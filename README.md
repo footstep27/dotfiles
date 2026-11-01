@@ -160,6 +160,68 @@ them ever ends up in the source.
 `~/.vim` contains only netrw's history file, so it stays unmanaged. If it ever gets real
 config, `chezmoi add` it.
 
+## What a fresh machine gets
+
+`./bootstrap.sh` installs the required Homebrew set, copies the configs below into `$HOME`,
+then installs tmux plugins and yazi packages from their own upstreams. `Brewfile.optional`
+is **not** part of that run: it is a snapshot of everything else on this machine, installed
+on request.
+
+### Packages
+
+| Tool | What it does here |
+|---|---|
+| **chezmoi** | Copies the tracked configs into `$HOME` and shows drift before it writes. |
+| **age** | Encryption backend for chezmoi; `bootstrap.sh` generates an identity, though nothing is encrypted today. |
+| **tmux** | Multiplexer that owns session persistence, with plugins and a pinned status bar. |
+| **btop** | TUI system monitor, themed Catppuccin Macchiato. |
+| **eza** | `ls` replacement aliased to `eza --icons`, so file types show as glyphs. |
+| **bat** | `cat` replacement with syntax highlighting, aliased as `cat` only when the binary exists. |
+| **git-delta** | Side-by-side diff pager wired into `git diff` and `git log` through `~/.gitconfig`. |
+| **lazygit** | TUI git client on `lg`, and the reason `core.editor` is deliberately unset. |
+| **Ghostty** | Default terminal; the config fixes the Macchiato theme, MonoLisa plus symbol fallback, splits, quick terminal and command-finish notifications. |
+| **Symbols Nerd Font** | Icons-only font behind the prompt, `eza --icons` and powerline separators, and the fallback when MonoLisa is absent. |
+
+### Plugins fetched after the configs land
+
+| Plugin | Role |
+|---|---|
+| **tpm** | tmux plugin manager; cloned to `~/.tmux/plugins/tpm` and run from `.tmux.conf`. |
+| **tmux-sensible** | Baseline tmux settings that are safe to agree with. |
+| **tmux-resurrect** | Saves and restores sessions across restarts. |
+| **tmux-cpu** | CPU load segment in the status bar, pinned to a commit because upstream has no tags. |
+| **tmux-battery** | Battery segment in the status bar. |
+| **catppuccin/tmux** | Status bar theme, fixed to Macchiato. |
+| **yazi: what-size** | Shows real directory sizes on demand, bound to `M` and `C`. |
+| **yazi flavors** | `catppuccin-macchiato` (active), `catppuccin-mocha`, `dracula` and `ayu-dark`, switchable in `theme.toml`. |
+
+### Settings written into `$HOME`
+
+| Target | What it sets |
+|---|---|
+| `.zshrc` | Oh My Zsh with powerlevel10k, `PATH` deduplication, `eza`/`bat`/`lazygit` aliases, word-wise `Ctrl+Arrow` bindings, and the `y` wrapper that makes yazi change directory. |
+| `.zprofile` | Homebrew shellenv and nvm for login shells. |
+| `.zshenv` | Cargo environment for every zsh process. |
+| `.profile`, `.tcshrc` | Docker and Cargo paths for the legacy shells. |
+| `.p10k.zsh` | Prompt layout: instant prompt, two-line prompt, icons and segments. |
+| `.tmux.conf` | `tmux-256color`, true colour and clipboard for `xterm-ghostty`, mouse on, the six pinned plugins, Macchiato status bar. |
+| `.wezterm.lua` + `.wezterm-themes/` | WezTerm fallback: MesloLGS NF at 14pt, no tab bar, Catppuccin Macchiato. |
+| `.config/ghostty/config` | Theme, font stack, window padding, Option-as-char, German-safe tab and split keys, quick terminal, notification policy. |
+| `.config/btop/` | btop settings plus the Catppuccin Macchiato theme file it references. |
+| `.config/yazi/` | File-manager layout, mime-based openers, preview tasks, Vim-style keymap, theme selection. |
+| `.config/opencode/` | `cli.json` for theme, diff wrapping and session UI; `opencode.jsonc` as the global config stub. |
+| `.gitconfig` | Commit identity, delta pager, `diff3` merge conflicts, coloured moved lines, no signing, no editor. |
+| `.agents/` | 27 pinned agent skills plus `.skill-lock.json`, which records each upstream and content hash. |
+
+### Not installed by the repo
+
+A few things the configs reference are expected to exist already, and a fresh machine will
+show gaps until they do: **Oh My Zsh** at `~/.oh-my-zsh` with **powerlevel10k** in
+`custom/themes`; **yazi** itself and the `my-commands` plugin, which `.zshrc` and the yazi
+keymap use; **zsh-autosuggestions** and **zsh-syntax-highlighting**, sourced unconditionally
+by `.zshrc`; **MesloLGS NF** for WezTerm; and **MonoLisa**, which cannot be redistributed at
+all (see `docs/fonts.md`).
+
 ## Verifying
 
 ```sh

@@ -7,13 +7,13 @@ extend to any of it.
 
 ## Agent skills — `dot_agents/skills/`
 
-Vendored copies of 26 skills, pulled from two upstream repositories. Exact
+Vendored copies of 27 skills, pulled from two upstream repositories. Exact
 per-skill provenance, including a content hash for each skill folder, is in
 `dot_agents/dot_skill-lock.json`.
 
 | Upstream | Skills | Licence |
 |---|---|---|
-| https://github.com/mattpocock/skills | 25 (`code-review` … `writing-for-agents`) | MIT, Copyright (c) 2026 Matt Pocock |
+| https://github.com/mattpocock/skills | 26 (`code-review` … `writing-for-agents`) | MIT, Copyright (c) 2026 Matt Pocock |
 | https://github.com/vercel-labs/skills | 1 (`find-skills`) | MIT, Copyright (c) 2026 Vercel, Inc. |
 
 `dot_agents/skills/pr/CREDITS.md` additionally attributes that skill's ideas to
