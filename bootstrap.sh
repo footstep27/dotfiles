@@ -5,9 +5,9 @@
 #   ./bootstrap.sh --dry-run  # show the plan, change nothing
 #
 # Idempotent: safe to re-run after a partial failure or to pick up updates.
-# Order matters — brew → required packages → chezmoi/age → apply → tmux plugins
-# → yazi packages → verify — because chezmoi must write the configs before
-# anything reads them.
+# Order matters — Command Line Tools → brew → required packages → chezmoi/age →
+# apply → shell framework → tmux plugins → yazi packages → verify — because
+# chezmoi must write the configs before anything reads them.
 
 set -euo pipefail
 
@@ -31,7 +31,19 @@ if (( DRY_RUN )); then
   printf '%sDRY RUN%s — nothing will be modified\n\n' "$YELLOW" "$RESET"
 fi
 
-# ---------------------------------------------------------------- 1. Homebrew
+# ------------------------------------------------- 1. Command Line Tools
+# A genuinely bare Mac has no git and no compiler, which means it cannot clone
+# this repo and Homebrew's installer refuses to run. There is no unattended
+# install: `xcode-select --install` opens a GUI dialog, so this step only
+# reports the truth instead of failing three steps later.
+step "Command Line Tools"
+if xcode-select -p >/dev/null 2>&1; then
+  info "present: $(xcode-select -p)"
+else
+  fail "Command Line Tools missing — run 'xcode-select --install', finish the dialog, then re-run this script"
+fi
+
+# ---------------------------------------------------------------- 2. Homebrew
 step "Homebrew"
 if command -v brew >/dev/null 2>&1; then
   info "present: $(command -v brew)"
@@ -47,7 +59,7 @@ else
   fi
 fi
 
-# ------------------------------------------------------- 2. Required packages
+# ------------------------------------------------------- 3. Required packages
 step "Required packages"
 if (( DRY_RUN )); then
   info "would run: brew bundle install --file=$ROOT/Brewfile"
@@ -58,7 +70,7 @@ fi
 
 command -v chezmoi >/dev/null 2>&1 || (( DRY_RUN )) || fail "chezmoi missing after bundle"
 
-# -------------------------------------------------------- 3. chezmoi source
+# -------------------------------------------------------- 4. chezmoi source
 step "chezmoi source"
 CHEZMOI_CONFIG="$HOME/.config/chezmoi/chezmoi.toml"
 CHEZMOI_AGE_KEY="$HOME/.config/chezmoi/key.txt"
@@ -112,7 +124,7 @@ else
   ensure_chezmoi_config
 fi
 
-# ------------------------------------------------------------- 4. Backup drift
+# ------------------------------------------------------------- 5. Backup drift
 step "Backup"
 if (( DRY_RUN )); then
   info "would back up existing dotfiles that differ from the repo"
@@ -138,7 +150,7 @@ else
   fi
 fi
 
-# ---------------------------------------------------------------- 5. Apply
+# ---------------------------------------------------------------- 6. Apply
 step "Apply"
 if (( DRY_RUN )); then
   chezmoi apply --dry-run --verbose 2>&1 | sed 's/^/    /' || true
@@ -146,7 +158,68 @@ else
   chezmoi apply --verbose 2>&1 | sed 's/^/    /'
 fi
 
-# -------------------------------------------------- 6. Ghostty terminfo
+# ---------------------------------------------------- 7. Shell framework
+# Oh My Zsh publishes no tags, so both pins are commit SHAs: the pair this
+# machine runs today. Moving either is a deliberate edit, not a side effect of
+# the day the machine was built.
+OMZ_REPO="https://github.com/ohmyzsh/ohmyzsh.git"
+OMZ_PIN="2100c630ba4bd67bb48802c3e7da893a4fdaa1a0"
+P10K_REPO="https://github.com/romkatv/powerlevel10k.git"
+P10K_PIN="9253fb1c5034410c43a0c681ff8294181c54016c"
+
+ensure_pinned_repo() { # repo dir pin name
+  local repo="$1" dir="$2" pin="$3" name="$4"
+  if [[ ! -d "$dir/.git" ]]; then
+    mkdir -p "$dir"
+    git -C "$dir" init --quiet || { warn "$name: init failed"; return 1; }
+    git -C "$dir" remote add origin "$repo" 2>/dev/null \
+      || git -C "$dir" remote set-url origin "$repo"
+    if ! git -C "$dir" fetch --quiet --depth 1 origin "$pin"; then
+      warn "$name: could not fetch ${pin:0:7}"
+      return 1
+    fi
+    git -C "$dir" checkout --quiet FETCH_HEAD \
+      || { warn "$name: checkout failed"; return 1; }
+    info "$name: installed at ${pin:0:7}"
+    return 0
+  fi
+  # Generated files are normal (Oh My Zsh writes completions/), so only tracked
+  # modifications count as "do not touch this".
+  if [[ -n "$(git -C "$dir" status --porcelain --untracked-files=no 2>/dev/null)" ]]; then
+    warn "$name: local changes — leaving it alone"
+    return 0
+  fi
+  if [[ "$(git -C "$dir" rev-parse HEAD 2>/dev/null)" == "$pin" ]]; then
+    info "$name: already at ${pin:0:7}"
+    return 0
+  fi
+  if git -C "$dir" fetch --quiet --depth 1 origin "$pin" \
+     && git -C "$dir" checkout --quiet FETCH_HEAD; then
+    info "$name: moved to ${pin:0:7}"
+  else
+    warn "$name: could not move to ${pin:0:7}"
+  fi
+}
+
+step "Shell framework"
+if (( DRY_RUN )); then
+  if [[ -d "$HOME/.oh-my-zsh/.git" ]]; then
+    info "would check Oh My Zsh is at ${OMZ_PIN:0:7}"
+  else
+    info "would install Oh My Zsh ${OMZ_PIN:0:7} into ~/.oh-my-zsh"
+  fi
+  if [[ -d "$HOME/.oh-my-zsh/custom/themes/powerlevel10k/.git" ]]; then
+    info "would check powerlevel10k is at ${P10K_PIN:0:7}"
+  else
+    info "would install powerlevel10k ${P10K_PIN:0:7} into ~/.oh-my-zsh/custom/themes"
+  fi
+else
+  ensure_pinned_repo "$OMZ_REPO" "$HOME/.oh-my-zsh" "$OMZ_PIN" "oh-my-zsh" || true
+  ensure_pinned_repo "$P10K_REPO" "$HOME/.oh-my-zsh/custom/themes/powerlevel10k" \
+    "$P10K_PIN" "powerlevel10k" || true
+fi
+
+# -------------------------------------------------- 8. Ghostty terminfo
 # Ghostty keeps its terminfo inside the app bundle, where ncurses will not look.
 # tmux (and anything over ssh) needs TERM=xterm-ghostty to be resolvable, so the
 # bundled entries are copied into the standard per-user location.
@@ -179,7 +252,7 @@ else
   warn "Ghostty bundle not found — skipping terminfo"
 fi
 
-# -------------------------------------------------------- 7. tmux plugins
+# -------------------------------------------------------- 9. tmux plugins
 # TPM installs missing plugins but never checks out the ref declared after '#',
 # so the pins are applied explicitly here.
 step "tmux plugins"
@@ -212,7 +285,7 @@ else
   info "plugins: $(ls "$HOME/.tmux/plugins" | tr '\n' ' ')"
 fi
 
-# -------------------------------------------------------- 8. yazi packages
+# -------------------------------------------------------- 10. yazi packages
 # Flavors and plugins are not vendored; package.toml pins them and `ya`
 # installs the exact refs recorded there.
 step "yazi packages"
@@ -225,7 +298,7 @@ else
   warn "ya not found — skipping yazi packages"
 fi
 
-# ---------------------------------------------------------------- 9. Verify
+# ---------------------------------------------------------------- 11. Verify
 step "Verify"
 if [[ -x "$ROOT/scripts/verify.sh" ]]; then
   if (( DRY_RUN )); then
@@ -237,5 +310,5 @@ else
   warn "scripts/verify.sh not present — skipping verification"
 fi
 
-printf '\n%sDone.%s Next: open Ghostty. Two steps stay manual — see README.\n' \
+printf '\n%sDone.%s Next: open Ghostty. Some steps stay manual — see README.\n' \
   "$GREEN" "$RESET"
