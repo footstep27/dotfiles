@@ -19,6 +19,7 @@ GLOSSARY.md
 .config/opencode/package.json
 .config/opencode/package-lock.json
 .config/opencode/node_modules/
+.config/opencode/.gitignore
 .local/share/opencode/
 .local/state/opencode/
 
