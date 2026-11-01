@@ -11,6 +11,7 @@ Brewfile.optional
 bootstrap.sh
 LICENSE
 THIRD-PARTY-NOTICES.md
+GLOSSARY.md
 
 # OpenCode secrets and machine-local state never belong in git.
 # These are target paths, so they guard against a future `chezmoi add --recursive`.
@@ -23,5 +24,8 @@ THIRD-PARTY-NOTICES.md
 
 # yazi packages are declared in package.toml and restored with `ya pkg install`;
 # their trees must not drift into the source via `chezmoi add --recursive`.
-.config/yazi/plugins/
+# The one exception is my-commands: a small personal plugin with no upstream, so
+# it has to be managed here to exist on a fresh machine.
+.config/yazi/plugins/*
+!.config/yazi/plugins/my-commands.yazi/
 .config/yazi/flavors/

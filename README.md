@@ -11,12 +11,14 @@ and the fonts and packages they need. Managed with [chezmoi](https://www.chezmoi
 This repository **is** the chezmoi source. `$HOME` holds copies — not symlinks — so edits
 belong here, and one command puts them on the machine.
 
-Setting up a fresh Mac? [Jump to the bootstrap steps](#new-machine). Otherwise the loop below
-is all you need.
+**The goal is one thing: a genuinely bare Mac — stock macOS, an admin user, a network
+connection, no Command Line Tools, no Homebrew, no git — becoming this exact setup.** That
+is the standard every change here is measured against, and `scripts/verify.sh` is how it is
+proved. Setting up such a machine? [Jump to the bootstrap steps](#new-machine).
 
-These are my own settings, published so they can be read and borrowed from. Clone and adapt
-them to your machine rather than applying them verbatim; there is no support and no promise
-that a checkout from today still applies cleanly next month.
+If you are not me, the configs are readable but they are not a template: change the identity
+in `.gitconfig`, install your own fonts, and expect no support. There is no promise that
+today's checkout applies cleanly next month.
 
 ## Daily work
 
@@ -118,17 +120,24 @@ skills run `chezmoi re-add ~/.agents`, review, commit, and push.
 
 ## New machine
 
+A bare Mac has no `git`, no compiler and therefore no Homebrew, so the first two steps stay
+manual:
+
 ```sh
-git clone git@github.com:footstep27/dotfiles.git ~/Repositories/dotfiles
+xcode-select --install                                     # GUI dialog; click through it
+git clone https://github.com/footstep27/dotfiles.git ~/Repositories/dotfiles
 cd ~/Repositories/dotfiles
 ./bootstrap.sh --dry-run     # see the plan
 ./bootstrap.sh
 ```
 
-`bootstrap.sh` is idempotent and runs, in order: Homebrew (installing it if absent) →
-`Brewfile` → chezmoi source wiring (including the age recipient) → archive of managed
-dotfiles when any drifted → `chezmoi apply` → Ghostty terminfo → tmux plugins at their pinned
-refs → `scripts/verify.sh`.
+HTTPS on purpose: a bare machine has no SSH key yet.
+
+`bootstrap.sh` is idempotent and runs, in order: Command Line Tools pre-flight → Homebrew
+(installing it if absent) → `Brewfile` → chezmoi source wiring (including the age recipient)
+→ archive of managed dotfiles when any drifted → `chezmoi apply` → Oh My Zsh and
+powerlevel10k at their pinned commits → Ghostty terminfo → tmux plugins at their pinned refs
+→ yazi packages → `scripts/verify.sh`.
 
 The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore it with
 `tar -xzf … -C /`. Later runs only archive when local files have drifted from the repo.
@@ -179,8 +188,22 @@ on request.
 | **bat** | `cat` replacement with syntax highlighting, aliased as `cat` only when the binary exists. |
 | **git-delta** | Side-by-side diff pager wired into `git diff` and `git log` through `~/.gitconfig`. |
 | **lazygit** | TUI git client on `lg`, and the reason `core.editor` is deliberately unset. |
+| **yazi** | Terminal file manager behind the `y` wrapper that changes directory on exit. |
+| **zsh-autosuggestions** | Fish-style history suggestions while typing; sourced by `.zshrc`. |
+| **zsh-syntax-highlighting** | Command-line colouring as you type; sourced last so it can see the line. |
+| **opencode** | Agent CLI whose config in `~/.config/opencode` is managed here. |
 | **Ghostty** | Default terminal; the config fixes the Macchiato theme, MonoLisa plus symbol fallback, splits, quick terminal and command-finish notifications. |
 | **Symbols Nerd Font** | Icons-only font behind the prompt, `eza --icons` and powerline separators, and the fallback when MonoLisa is absent. |
+
+### Shell framework
+
+`bootstrap.sh` clones these at fixed commits, because Oh My Zsh publishes no tags and a
+floating checkout would make two machines differ for no reason:
+
+| Component | Role |
+|---|---|
+| **Oh My Zsh** | Loads plugins and themes; its `git` plugin supplies the aliases the shell assumes. |
+| **powerlevel10k** | The prompt: two lines, instant prompt, git status, and the glyph segments configured in `.p10k.zsh`. |
 
 ### Plugins fetched after the configs land
 
@@ -193,6 +216,7 @@ on request.
 | **tmux-battery** | Battery segment in the status bar. |
 | **catppuccin/tmux** | Status bar theme, fixed to Macchiato. |
 | **yazi: what-size** | Shows real directory sizes on demand, bound to `M` and `C`. |
+| **yazi: my-commands** | Personal command menu bound to `F2`; vendored in this repo because it has no upstream. |
 | **yazi flavors** | `catppuccin-macchiato` (active), `catppuccin-mocha`, `dracula` and `ayu-dark`, switchable in `theme.toml`. |
 
 ### Settings written into `$HOME`
@@ -213,28 +237,43 @@ on request.
 | `.gitconfig` | Commit identity, delta pager, `diff3` merge conflicts, coloured moved lines, no signing, no editor. |
 | `.agents/` | 27 pinned agent skills plus `.skill-lock.json`, which records each upstream and content hash. |
 
-### Not installed by the repo
+### Deliberately not installed
 
-A few things the configs reference are expected to exist already, and a fresh machine will
-show gaps until they do: **Oh My Zsh** at `~/.oh-my-zsh` with **powerlevel10k** in
-`custom/themes`; **yazi** itself and the `my-commands` plugin, which `.zshrc` and the yazi
-keymap use; **zsh-autosuggestions** and **zsh-syntax-highlighting**, sourced unconditionally
-by `.zshrc`; **MesloLGS NF** for WezTerm; and **MonoLisa**, which cannot be redistributed at
-all (see `docs/fonts.md`).
+Four things are left out on purpose. The first two cannot be redistributed; the last two are
+developer toolchains that a given machine may not need.
+
+| Not installed | Why |
+|---|---|
+| **MonoLisa** | Commercial, not redistributable. Install your own licensed copy — see `docs/fonts.md`. |
+| **MesloLGS NF** | Only used by the WezTerm fallback; install it if you use WezTerm. |
+| **Rust, nvm, Docker, Herd** | Guarded in the shell configs: absent means a warning from `verify.sh`, never an error. |
+| **`Brewfile.optional`** | A snapshot of every other app on this machine. Install with `brew bundle install --file=Brewfile.optional` if you want all of it. |
 
 ## Verifying
 
 ```sh
-./scripts/verify.sh
+./scripts/verify.sh            # the applied machine: apps, pty, tmux, fonts
+./scripts/verify.sh --static   # repo-side only: manifest, dependencies, pins
+./scripts/check-bare-shell.sh  # simulated bare Mac: no Rust, nvm, Docker, Herd
 ```
 
-One row per check, `pass` / `warn` / `FAIL`; exit status is non-zero only on failure. It
-asserts behaviour, not file contents: the Ghostty config parses, text and icon faces resolve,
-zsh loads cleanly through a pty, tmux starts with every plugin at its pinned ref, and the
-Brewfile is satisfied. One check is about the repo rather than the machine: it fails if a
-font binary has become tracked, which is how a licensed font would leak back in.
+`verify.sh` prints one row per check, `pass` / `warn` / `FAIL`, and exits non-zero only on
+failure. It asserts behaviour, not file contents: the Ghostty config parses, text and icon
+faces resolve, zsh loads cleanly through a pty, tmux starts with every plugin at its pinned
+ref, and the required tools are actually on `PATH`. Missing requirements fail; absent
+optional toolchains and the licensed font warn. Two checks are about the repo rather than the
+machine: one fails if a font binary becomes tracked, the other if a managed config contains
+something secret-shaped.
 
-## Two steps that stay manual
+`--static` skips everything that needs Ghostty, a pty or a tmux server, which makes it the
+mode to run on a machine that has just finished bootstrapping.
+
+`check-bare-shell.sh` builds a throwaway `$HOME` with only the managed zsh files and the
+pinned framework, starts an interactive zsh with the optional toolchains absent, and fails if
+any error reaches the terminal. It is the proof that the shell degrades instead of breaking;
+`--rev <commit>` runs the same test against an older revision.
+
+## What stays manual after bootstrap
 
 1. **Default terminal app.** macOS has no dependable CLI for this. Set Ghostty as the default
    in System Settings (or via Finder's "Open With"). iTerm2 and WezTerm stay installed as
@@ -242,6 +281,7 @@ font binary has become tracked, which is how a licensed font would leak back in.
 2. **MonoLisa, if missing.** Licensed software, so it is not distributed here and has no
    Homebrew formula. `verify.sh` reports a warning and the terminals fall back through the
    font chain. See `docs/fonts.md`.
+3. **MesloLGS NF, if you use WezTerm.** Same situation: installed by hand, not managed.
 
 ## Troubleshooting
 
@@ -259,6 +299,8 @@ font binary has become tracked, which is how a licensed font would leak back in.
 ```
 bootstrap.sh            fresh-machine entry point (--dry-run supported)
 scripts/verify.sh       behaviour checks for the applied machine
+scripts/check-bare-shell.sh  simulated bare Mac: the shell must start clean
+GLOSSARY.md             terms: bare Mac, applied machine, required vs optional
 Brewfile                required packages
 Brewfile.optional       snapshot of the rest of the inventory
 dot_* / dot_config/     chezmoi-managed configs (names map to $HOME)
@@ -281,6 +323,9 @@ python3 .opencode/skills/diagram-design/scripts/export_svg.py \
 - **The repo is the chezmoi source,** and age is the chosen encryption backend. Reasoning in
   [`docs/adr/0001-chezmoi-and-age.md`](docs/adr/0001-chezmoi-and-age.md). age is wired but
   idle: `bootstrap.sh` generates an identity and records the recipient; no file is encrypted.
+- **A bare Mac is the success criterion.** Required versus optional is a deliberate split, not
+  an accident of what happens to be installed: see
+  [`docs/adr/0003-bare-mac-as-the-goal.md`](docs/adr/0003-bare-mac-as-the-goal.md).
 - **Option stays a character key** on the German layout (`macos-option-as-alt = false`).
   Option types `@ { } [ ] | \ ~ €`; word movement lives on `Ctrl+Left/Right` and
   `Ctrl+Backspace`, bound in `.zshrc`.
