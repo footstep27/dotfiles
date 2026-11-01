@@ -2,7 +2,8 @@
 
 This repository redistributes the following third-party material. Each item
 remains under its own licence; the MIT texts below are reproduced verbatim as
-the licence requires.
+the licence requires. The repository's own MIT licence in `LICENSE` does not
+extend to any of it.
 
 ## Agent skills — `dot_agents/skills/`
 
