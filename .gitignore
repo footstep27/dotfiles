@@ -4,8 +4,9 @@
 # Working notebook: specs and tickets for this repo. Local only, never published.
 .scratch/
 
-# Licensed fonts must never be committed. MonoLisa is commercial and not
-# redistributable; see docs/fonts.md and scripts/verify.sh.
+# Licensed fonts must never be committed. Nothing here needs one — the text face
+# comes from Homebrew — but a commercial font installed by hand must not drift in.
+# See docs/fonts.md and the licensing check in scripts/verify.sh.
 private_Library/
 *.ttf
 *.otf

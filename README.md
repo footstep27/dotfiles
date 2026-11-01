@@ -17,8 +17,8 @@ is the standard every change here is measured against, and `scripts/verify.sh` i
 proved. Setting up such a machine? [Jump to the bootstrap steps](#new-machine).
 
 If you are not me, the configs are readable but they are not a template: change the identity
-in `.gitconfig`, install your own fonts, and expect no support. There is no promise that
-today's checkout applies cleanly next month.
+in `.gitconfig` and expect no support. There is no promise that today's checkout applies
+cleanly next month.
 
 ## Daily work
 
@@ -151,7 +151,7 @@ The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore i
 | tmux | `.tmux.conf` (plugins pinned here, installed via TPM) |
 | WezTerm | `.wezterm.lua` + the one theme file actually used |
 | TUIs | `yazi` config, `btop` config and its Catppuccin Macchiato theme |
-| Fonts | nothing managed — install your own licensed MonoLisa (see `docs/fonts.md`) |
+| Fonts | Maple Mono NF, installed from the required `Brewfile` — nothing manual |
 | Git | global `.gitconfig` |
 | OpenCode | `~/.config/opencode/cli.json` (theme, diffs, session UI) and `opencode.jsonc` (global config) |
 | Agent skills | global `~/.agents/skills` + `.skill-lock.json`; the project skill lives in `.opencode/skills/diagram-design/` (repo-only) |
@@ -192,8 +192,8 @@ on request.
 | **zsh-autosuggestions** | Fish-style history suggestions while typing; sourced by `.zshrc`. |
 | **zsh-syntax-highlighting** | Command-line colouring as you type; sourced last so it can see the line. |
 | **opencode** | Agent CLI whose config in `~/.config/opencode` is managed here. |
-| **Ghostty** | Default terminal; the config fixes the Macchiato theme, MonoLisa plus symbol fallback, splits, quick terminal and command-finish notifications. |
-| **Symbols Nerd Font** | Icons-only font behind the prompt, `eza --icons` and powerline separators, and the fallback when MonoLisa is absent. |
+| **Ghostty** | Default terminal; the config fixes the Macchiato theme, Maple Mono NF, splits, quick terminal and command-finish notifications. |
+| **Maple Mono NF** | The text face and the icon set in one font: prompt glyphs, `eza --icons` and tmux segments resolve without a fallback. |
 
 ### Shell framework
 
@@ -229,7 +229,7 @@ floating checkout would make two machines differ for no reason:
 | `.profile`, `.tcshrc` | Docker and Cargo paths for the legacy shells. |
 | `.p10k.zsh` | Prompt layout: instant prompt, two-line prompt, icons and segments. |
 | `.tmux.conf` | `tmux-256color`, true colour and clipboard for `xterm-ghostty`, mouse on, the six pinned plugins, Macchiato status bar. |
-| `.wezterm.lua` + `.wezterm-themes/` | WezTerm fallback: MesloLGS NF at 14pt, no tab bar, Catppuccin Macchiato. |
+| `.wezterm.lua` + `.wezterm-themes/` | WezTerm fallback: Maple Mono NF at 14pt, no tab bar, Catppuccin Macchiato. |
 | `.config/ghostty/config` | Theme, font stack, window padding, Option-as-char, German-safe tab and split keys, quick terminal, notification policy. |
 | `.config/btop/` | btop settings plus the Catppuccin Macchiato theme file it references. |
 | `.config/yazi/` | File-manager layout, mime-based openers, preview tasks, Vim-style keymap, theme selection. |
@@ -239,13 +239,11 @@ floating checkout would make two machines differ for no reason:
 
 ### Deliberately not installed
 
-Four things are left out on purpose. The first two cannot be redistributed; the last two are
-developer toolchains that a given machine may not need.
+Nothing is installed by hand any more, including fonts. What is left out is either a
+developer toolchain a given machine may not need, or the full app inventory.
 
 | Not installed | Why |
 |---|---|
-| **MonoLisa** | Commercial, not redistributable. Install your own licensed copy — see `docs/fonts.md`. |
-| **MesloLGS NF** | Only used by the WezTerm fallback; install it if you use WezTerm. |
 | **Rust, nvm, Docker, Herd** | Guarded in the shell configs: absent means a warning from `verify.sh`, never an error. |
 | **`Brewfile.optional`** | A snapshot of every other app on this machine. Install with `brew bundle install --file=Brewfile.optional` if you want all of it. |
 
@@ -261,9 +259,8 @@ developer toolchains that a given machine may not need.
 failure. It asserts behaviour, not file contents: the Ghostty config parses, text and icon
 faces resolve, zsh loads cleanly through a pty, tmux starts with every plugin at its pinned
 ref, and the required tools are actually on `PATH`. Missing requirements fail; absent
-optional toolchains and the licensed font warn. Two checks are about the repo rather than the
-machine: one fails if a font binary becomes tracked, the other if a managed config contains
-something secret-shaped.
+optional toolchains warn. Two checks are about the repo rather than the machine: one fails if
+a font binary becomes tracked, the other if a managed config contains something secret-shaped.
 
 `--static` skips everything that needs Ghostty, a pty or a tmux server, which makes it the
 mode to run on a machine that has just finished bootstrapping.
@@ -278,17 +275,16 @@ any error reaches the terminal. It is the proof that the shell degrades instead 
 1. **Default terminal app.** macOS has no dependable CLI for this. Set Ghostty as the default
    in System Settings (or via Finder's "Open With"). iTerm2 and WezTerm stay installed as
    fallbacks.
-2. **MonoLisa, if missing.** Licensed software, so it is not distributed here and has no
-   Homebrew formula. `verify.sh` reports a warning and the terminals fall back through the
-   font chain. See `docs/fonts.md`.
-3. **MesloLGS NF, if you use WezTerm.** Same situation: installed by hand, not managed.
+
+That is the complete list. The fonts are installed from the `Brewfile`, so there is nothing
+to download by hand.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
 | A change disappeared after `apply` | `apply` overwrote the live file. Edit the repo; if the live edit was the good one, `chezmoi re-add` first. |
-| Prompt or glyphs look wrong | Check the MonoLisa step above, run `./scripts/verify.sh`, read `docs/fonts.md`. |
+| Prompt or glyphs look wrong | Run `./scripts/verify.sh`; if the text face is not Maple Mono NF, re-run `./bootstrap.sh`. See `docs/fonts.md`. |
 | `xterm-ghostty` unknown over ssh | Rerun `./bootstrap.sh` (copies the bundled terminfo) and check with `infocmp -x xterm-ghostty`. |
 | `sourceDir` points at another checkout | Fix `~/.config/chezmoi/chezmoi.toml` so it names this repo, or rerun `bootstrap.sh`. |
 | tmux plugins missing | `bash ~/.tmux/plugins/tpm/bin/install_plugins`, or rerun `./bootstrap.sh`. |
@@ -335,8 +331,10 @@ python3 .opencode/skills/diagram-design/scripts/export_svg.py \
 - **tmux is for persistence, not splitting.** Long-running work in named sessions; quick
   side-by-side work in Ghostty's native splits. Scrollback is capped at 10,000 lines and
   window restore is off because tmux owns persistence.
-- **MonoLisa ships as a variable pair** (no separate Bold), so bold is synthesized. The escape
-  hatch is putting `MesloLGS NF` ahead of it in the Ghostty font list.
+- **One font, not two.** Maple Mono NF carries the text face and the Nerd Font icons, so
+  there is no symbols fallback to keep in sync — and it is redistributable, so the repo can
+  install it instead of documenting it. See
+  [`docs/adr/0004-free-nerd-font-replaces-monolisa.md`](docs/adr/0004-free-nerd-font-replaces-monolisa.md).
 - **`tmux-cpu` is pinned to a commit, not a tag** — the only plugin whose upstream publishes
   no tags (`#bcb110d`).
 - **`core.editor` is deliberately unset.** Interactive committing goes through `lazygit`.
@@ -345,5 +343,5 @@ python3 .opencode/skills/diagram-design/scripts/export_svg.py \
 
 MIT — see [`LICENSE`](LICENSE). Third-party material keeps its own terms: the vendored agent
 skills, Catppuccin themes and Tabler icons are MIT with attribution collected in
-[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). MonoLisa is commercial and is **not**
-included; see [`docs/fonts.md`](docs/fonts.md).
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). Maple Mono NF is OFL 1.1 and is installed
+from Homebrew rather than redistributed here; see [`docs/fonts.md`](docs/fonts.md).

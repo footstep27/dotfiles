@@ -39,8 +39,17 @@ MIT, Copyright (c) 2020-2026 Paweł Kuna.
 
 ## Not included
 
-MonoLisa is commercial software and is **not** distributed here. See
-`docs/fonts.md` for how to install your own licensed copy.
+MonoLisa is commercial and is **not** distributed here. See `docs/fonts.md` for
+the font that is used instead.
+
+## Installed but not redistributed
+
+**Maple Mono NF** is pulled from Homebrew (`font-maple-mono-nf`); no font binary
+is committed to this repository. Upstream:
+https://github.com/subframe7536/maple-font — SIL Open Font License 1.1,
+Copyright (c) 2022 subframe7536. Its credits list JetBrains Mono, Roboto Mono,
+Fira Code, Victor Mono, Commit Mono, Recursive and MonoLisa as influences; each
+keeps its own licence.
 
 ---
 
