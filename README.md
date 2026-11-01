@@ -169,7 +169,8 @@ config, `chezmoi add` it.
 One row per check, `pass` / `warn` / `FAIL`; exit status is non-zero only on failure. It
 asserts behaviour, not file contents: the Ghostty config parses, text and icon faces resolve,
 zsh loads cleanly through a pty, tmux starts with every plugin at its pinned ref, and the
-Brewfile is satisfied.
+Brewfile is satisfied. One check is about the repo rather than the machine: it fails if a
+font binary has become tracked, which is how a licensed font would leak back in.
 
 ## Two steps that stay manual
 

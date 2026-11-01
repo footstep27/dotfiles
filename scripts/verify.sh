@@ -201,6 +201,20 @@ if command -v chezmoi >/dev/null 2>&1; then
   fi
 fi
 
+# ------------------------------------------------------- licensed assets guard
+# MonoLisa is commercial and must never be committed. `chezmoi add --recursive`
+# is the command that would do it by accident, so check the index, not $HOME.
+if command -v git >/dev/null 2>&1 && [[ -d "$ROOT/.git" ]]; then
+  TRACKED_FONTS="$(git -C "$ROOT" ls-files | grep -Ei '(^private_Library/)|\.(ttf|otf|ttc)$' || true)"
+  if [[ -z "$TRACKED_FONTS" ]]; then
+    pass "licensing" "no font binaries tracked"
+  else
+    fail "licensing" "font binary tracked: $(printf '%s' "$TRACKED_FONTS" | head -1)"
+  fi
+else
+  warn "licensing" "skipped, not a git checkout"
+fi
+
 # ------------------------------------------------------------- chezmoi drift
 if command -v chezmoi >/dev/null 2>&1; then
   if [[ -z "$(chezmoi diff 2>/dev/null)" ]]; then
