@@ -2,4 +2,7 @@
 setenv PATH "${PATH}:${HOME}/.docker/bin"
 # End of Docker Desktop section.
 
-source "$HOME/.cargo/env.tcsh"
+# Rust is optional: cargo ships with rustup, which this repo does not install.
+if ( -f "$HOME/.cargo/env.tcsh" ) then
+  source "$HOME/.cargo/env.tcsh"
+endif

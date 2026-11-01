@@ -1,1 +1,4 @@
-. "$HOME/.cargo/env"
+# Rust is optional: cargo ships with rustup, which this repo does not install.
+if [ -f "$HOME/.cargo/env" ]; then
+  . "$HOME/.cargo/env"
+fi
