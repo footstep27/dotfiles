@@ -1,2 +1,11 @@
 .DS_Store
 *.swp
+
+# Working notebook: specs and tickets for this repo. Local only, never published.
+.scratch/
+
+# Licensed fonts must never be committed. MonoLisa is commercial and not
+# redistributable; see docs/fonts.md and scripts/verify.sh.
+private_Library/
+*.ttf
+*.otf
