@@ -127,7 +127,7 @@ export HERD_PHP_84_INI_SCAN_DIR="$HOME/Library/Application Support/Herd/config/p
 export PATH="$HOME/Library/Application Support/Herd/bin/":$PATH
 
 # opencode
-export PATH=$HOME/.opencode/bin:$PATH
+export PATH="$HOME/.opencode/bin:$PATH"
 export GPG_TTY=$(tty)
 
 # Homebrew: .zprofile runs `brew shellenv` for login shells. Add it for
