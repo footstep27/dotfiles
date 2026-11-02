@@ -138,8 +138,9 @@ cd ~/Repositories/dotfiles
 HTTPS on purpose: a bare machine has no SSH key yet.
 
 On the first interactive run, a single checklist opens: eight categories of optional software
-plus config toggles for the required tools. `space` toggles, `a`/`n` select or clear a
-category, `A`/`N` do the same for everything, `/` filters, and `enter` saves. Optional
+plus config toggles for the required tools. Each row carries a one-sentence description, and
+`/` matches against names and descriptions. `space` toggles, `a`/`n` select or clear a
+category, `A`/`N` do the same for everything, and `enter` saves. Optional
 packages start unchecked; required packages are locked. Later runs reuse the saved selection,
 so `--select` is the command to revisit it.
 

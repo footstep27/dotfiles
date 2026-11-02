@@ -44,8 +44,19 @@ selection_prune_dependents
 
 BOLD=$'\033[1m'; DIM=$'\033[2m'; YELLOW=$'\033[33m'; RESET=$'\033[0m'
 
-HEIGHT="$(tput lines 2>/dev/null || printf 24)"
+# Read the real window size. `tput lines` cannot be used with its stderr
+# redirected: ncurses then cannot query the terminal and reports the terminfo
+# default (24) instead of the actual height, which caps the list at 19 rows.
+HEIGHT="$(stty size 2>/dev/null | awk '{print $1}')"
+case "$HEIGHT" in
+  ''|*[!0-9]*) HEIGHT="$(tput lines 2>/dev/null || printf 24)" ;;
+esac
 (( HEIGHT < 10 )) && HEIGHT=10
+COLS="$(stty size 2>/dev/null | awk '{print $2}')"
+case "$COLS" in
+  ''|*[!0-9]*) COLS="$(tput cols 2>/dev/null || printf 80)" ;;
+esac
+(( COLS < 20 )) && COLS=20
 
 CUR=0
 TOP=0
@@ -67,8 +78,8 @@ matches_filter() { # index
   [[ -z "$FILTER" ]] && return 0
   local needle hay
   needle="$(printf '%s' "$FILTER" | tr '[:upper:]' '[:lower:]')"
-  hay="$(printf '%s %s %s' "${ITEM_NAME[$1]}" "${ITEM_ID[$1]}" "$(cat_name "${ITEM_CAT[$1]}")" \
-    | tr '[:upper:]' '[:lower:]')"
+  hay="$(printf '%s %s %s %s' "${ITEM_NAME[$1]}" "${ITEM_ID[$1]}" "${ITEM_DESC[$1]}" \
+    "$(cat_name "${ITEM_CAT[$1]}")" | tr '[:upper:]' '[:lower:]')"
   [[ "$hay" == *"$needle"* ]]
 }
 
@@ -179,15 +190,36 @@ draw() {
       printf '%s── %s ──%s\n' "$BOLD" "${LINE_TEXT[$l]}" "$RESET"
     else
       local ii="${LINE_ITEM[$l]}" mark="[ ]" note=""
+      local text="${LINE_TEXT[$l]}" desc="${ITEM_DESC[$ii]:-}"
       if [[ "${ITEM_LOCKED[$ii]}" == 1 ]]; then
         mark="[x]"; note="  (required)"
       elif sel_has "${ITEM_ID[$ii]}"; then
         mark="[x]"
       fi
+      # Keep every item on one row: trim the description to whatever space is
+      # left after the mark, the name and the required note.
+      local room=$((COLS - 4 - ${#note}))
+      (( room < 8 )) && room=8
+      if (( ${#text} >= room )); then
+        text="${text:0:room}"
+        desc=""
+      elif [[ -n "$desc" ]]; then
+        local space=$((room - ${#text} - 3))
+        if (( space < 8 )); then
+          desc=""
+        elif (( ${#desc} > space )); then
+          desc="${desc:0:space-3}"
+          desc="${desc% *}..."
+        fi
+      fi
       if (( l == CUR )); then
-        printf '\033[7m%s %s%s\033[0m\n' "$mark" "${LINE_TEXT[$l]}" "$note"
+        local body="$text"
+        [[ -n "$desc" ]] && body="$body - $desc"
+        printf '\033[7m%s %s%s\033[0m\n' "$mark" "$body" "$note"
       else
-        printf '%s %s%s\n' "$mark" "${LINE_TEXT[$l]}" "$note"
+        printf '%s %s' "$mark" "$text"
+        [[ -n "$desc" ]] && printf ' %s- %s%s' "$DIM" "$desc" "$RESET"
+        printf '%s\n' "$note"
       fi
     fi
     l=$((l + 1))

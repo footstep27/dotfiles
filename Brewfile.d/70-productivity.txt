@@ -1,10 +1,10 @@
 # name: Productivity
-cask	bloom
-cask	cyberduck
-cask	home-assistant
-cask	joplin
-cask	moneymoney
-cask	nextcloud
-cask	obsidian
-cask	omnifocus
-cask	tigervnc
+cask	bloom		Column-based file manager for the Mac.
+cask	cyberduck		File transfer client for FTP, SFTP, WebDAV and cloud storage.
+cask	home-assistant		Desktop client for Home Assistant.
+cask	joplin		Open-source note-taking and to-do app with sync.
+cask	moneymoney		German banking and personal finance manager.
+cask	nextcloud		Desktop sync client for Nextcloud servers.
+cask	obsidian		Markdown knowledge base with links and plugins.
+cask	omnifocus		Task manager built around GTD projects and perspectives.
+cask	tigervnc		VNC client for remote desktop access.

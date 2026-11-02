@@ -1,12 +1,12 @@
 # name: System
-brew	dua-cli
-brew	dust
-brew	fclones
-brew	libimobiledevice
-brew	ncdu
-brew	rmlint
-brew	sevenzip
-brew	simg2img
-cask	android-platform-tools
-cask	blip
-cask	fuse-t	requires=tap:macos-fuse-t/cask
+brew	dua-cli		Interactive disk usage analyzer.
+brew	dust		Intuitive du replacement that highlights the largest directories.
+brew	fclones		Fast duplicate file finder.
+brew	libimobiledevice		Tools for communicating with iPhone and iPad devices.
+brew	ncdu		Terminal disk usage browser.
+brew	rmlint		Finds duplicate, broken and wasted files.
+brew	sevenzip		7-Zip archiver and extractor.
+brew	simg2img		Converts Android sparse images to raw images.
+cask	android-platform-tools		Android SDK tools including adb and fastboot.
+cask	blip		Sends files of any size between devices.
+cask	fuse-t	requires=tap:macos-fuse-t/cask	Kext-less user-space filesystem support for macOS.

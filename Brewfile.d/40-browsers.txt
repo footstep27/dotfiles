@@ -1,4 +1,4 @@
 # name: Browsers
-cask	brave-browser
-cask	firefox
-cask	google-chrome
+cask	brave-browser		Chromium browser with built-in ad and tracker blocking.
+cask	firefox		Mozilla's independent, privacy-focused browser.
+cask	google-chrome		Google's Chromium-based browser with its own sync and services.

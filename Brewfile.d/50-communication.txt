@@ -1,9 +1,10 @@
 # name: Communication
-cask	discord
-cask	proton-mail
-cask	signal
-cask	slack
-cask	telegram
-cask	thunderbird
-cask	whatsapp
-cask	zoom
+cask	discord		Voice, video and text chat for communities and groups.
+cask	microsoft-teams		Microsoft's chat, meetings and calling app for work.
+cask	proton-mail		Proton's end-to-end encrypted email desktop app.
+cask	signal		Private, end-to-end encrypted messaging and calls.
+cask	slack		Team chat and collaboration workspace.
+cask	telegram		Cloud-based messaging with large groups and channels.
+cask	thunderbird		Open-source email, calendar and news client.
+cask	whatsapp		Meta's messaging and calling app.
+cask	zoom		Video meetings, webinars and screen sharing.

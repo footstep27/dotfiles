@@ -4,14 +4,16 @@
 # A category is a line-oriented file in Brewfile.d/:
 #
 #   # name: Dev CLI
-#   brew<TAB>go
-#   cask<TAB>wezterm<TAB>paths=.wezterm.lua,.wezterm-themes/
-#   vscode<TAB>ms-python.python<TAB>requires=cask:visual-studio-code
-#   config<TAB>opencode<TAB>paths=.config/opencode/opencode.jsonc,.config/opencode/cli.json
+#   brew<TAB>go<TAB><TAB>Go programming language toolchain.
+#   cask<TAB>wezterm<TAB>paths=.wezterm.lua,.wezterm-themes/<TAB>GPU-accelerated terminal emulator.
+#   vscode<TAB>ms-python.python<TAB>requires=cask:visual-studio-code<TAB>Python language support.
+#   config<TAB>opencode<TAB>paths=.config/opencode/opencode.jsonc<TAB>OpenCode agent settings.
 #
-# Attributes are space-separated key=value pairs. Paths are target paths,
-# comma-separated, and are used both for the generated .chezmoiignore file and
-# for --prune. Required packages are read from ../Brewfile and marked locked.
+# The third column holds optional space-separated key=value attributes. Paths
+# are target paths, comma-separated, and are used both for the generated
+# .chezmoiignore file and for --prune. The fourth column is a one-sentence
+# description shown in the checklist. Required packages are read from
+# ../Brewfile and marked locked; their descriptions live in required_desc().
 
 DOTFILES_ROOT="${DOTFILES_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 DOTFILES_STATE_DIR="${DOTFILES_STATE_DIR:-$HOME/.local/state/dotfiles}"
@@ -22,7 +24,7 @@ DOTFILES_BREWFILE="$DOTFILES_STATE_DIR/Brewfile.selected"
 # Parallel arrays: Bash 3.2 on macOS has no associative arrays.
 ITEM_N=0
 ITEM_CAT=(); ITEM_KIND=(); ITEM_ID=(); ITEM_NAME=()
-ITEM_PATHS=(); ITEM_REQUIRES=(); ITEM_CONFLICTS=(); ITEM_LOCKED=()
+ITEM_PATHS=(); ITEM_REQUIRES=(); ITEM_CONFLICTS=(); ITEM_LOCKED=(); ITEM_DESC=()
 CAT_N=0
 CAT_KEY=(); CAT_NAME=()
 
@@ -46,7 +48,7 @@ cat_name() {
   printf '%s' "$1"
 }
 
-item_add() { # category kind id name paths requires conflicts locked
+item_add() { # category kind id name paths requires conflicts locked description
   ITEM_CAT[ITEM_N]="$1"
   ITEM_KIND[ITEM_N]="$2"
   ITEM_ID[ITEM_N]="$3"
@@ -55,6 +57,7 @@ item_add() { # category kind id name paths requires conflicts locked
   ITEM_REQUIRES[ITEM_N]="$6"
   ITEM_CONFLICTS[ITEM_N]="$7"
   ITEM_LOCKED[ITEM_N]="$8"
+  ITEM_DESC[ITEM_N]="$9"
   ITEM_N=$((ITEM_N + 1))
 }
 
@@ -80,12 +83,34 @@ required_category() {
   esac
 }
 
+# Required rows are injected from Brewfile, which cannot carry descriptions, so
+# their one-line summaries live here. Everything selectable describes itself in
+# the fourth column of its Brewfile.d/ entry.
+required_desc() {
+  case "$1" in
+    chezmoi)                 printf 'Dotfile manager that applies this repository to your home directory.' ;;
+    age)                     printf 'Modern file encryption used for chezmoi secrets.' ;;
+    tmux)                    printf 'Terminal multiplexer for persistent and split sessions.' ;;
+    btop)                    printf 'Resource monitor for CPU, memory, disks and network.' ;;
+    eza)                     printf 'Modern ls replacement with icons, git status and tree view.' ;;
+    bat)                     printf 'cat with syntax highlighting, line numbers and git markers.' ;;
+    git-delta)               printf 'Readable git diffs with syntax highlighting.' ;;
+    lazygit)                 printf 'Terminal UI for common git operations.' ;;
+    yazi)                    printf 'Fast terminal file manager with previews and Vim keys.' ;;
+    zsh-autosuggestions)     printf 'Fish-style history suggestions in the zsh prompt.' ;;
+    zsh-syntax-highlighting) printf 'Live syntax highlighting while typing in zsh.' ;;
+    ghostty)                 printf 'GPU-accelerated terminal emulator configured by this repo.' ;;
+    font-maple-mono-nf)      printf 'Maple Mono Nerd Font with text, code and icon glyphs.' ;;
+    opencode)                printf 'AI coding agent CLI whose configuration is managed here.' ;;
+  esac
+}
+
 selection_load_items() {
   ITEM_N=0; ITEM_CAT=(); ITEM_KIND=(); ITEM_ID=(); ITEM_NAME=()
-  ITEM_PATHS=(); ITEM_REQUIRES=(); ITEM_CONFLICTS=(); ITEM_LOCKED=()
+  ITEM_PATHS=(); ITEM_REQUIRES=(); ITEM_CONFLICTS=(); ITEM_LOCKED=(); ITEM_DESC=()
   CAT_N=0; CAT_KEY=(); CAT_NAME=()
 
-  local f key name line kind id attrs a paths requires conflicts
+  local f key name line rest kind id attrs desc a paths requires conflicts
   # First pass: category names and order, so required rows can be inserted into
   # an existing category before the optional rows.
   for f in "$DOTFILES_ROOT"/Brewfile.d/*.txt; do
@@ -109,7 +134,7 @@ selection_load_items() {
     [[ -n "$id" ]] || continue
     key="$(required_category "$id")"
     cat_add "$key" "$(cat_name "$key")"
-    item_add "$key" "$kind" "$kind:$id" "$id" "" "" "" 1
+    item_add "$key" "$kind" "$kind:$id" "$id" "" "" "" 1 "$(required_desc "$id")"
   done < "$DOTFILES_ROOT/Brewfile"
 
   # Optional rows, after the required ones so config toggles sit beneath their
@@ -120,8 +145,21 @@ selection_load_items() {
     key="${key#[0-9][0-9]-}"
     while IFS= read -r line; do
       [[ -z "$line" || "$line" == \#* ]] && continue
-      kind=""; id=""; attrs=""
-      IFS=$'\t' read -r kind id attrs <<< "$line"
+      # Split on literal tabs by hand: `read` treats a tab as IFS whitespace,
+      # which collapses consecutive tabs and loses an empty attributes column.
+      kind="${line%%$'\t'*}"
+      rest="${line#*$'\t'}"
+      id="${rest%%$'\t'*}"
+      attrs=""; desc=""
+      case "$rest" in
+        *$'\t'*)
+          rest="${rest#*$'\t'}"
+          attrs="${rest%%$'\t'*}"
+          case "$rest" in
+            *$'\t'*) desc="${rest#*$'\t'}" ;;
+          esac
+          ;;
+      esac
       [[ -n "$kind" && -n "$id" ]] || continue
       paths=""; requires=""; conflicts=""
       for a in $attrs; do
@@ -131,7 +169,7 @@ selection_load_items() {
           conflicts=*) conflicts="${a#conflicts=}" ;;
         esac
       done
-      item_add "$key" "$kind" "$kind:$id" "$id" "$paths" "$requires" "$conflicts" 0
+      item_add "$key" "$kind" "$kind:$id" "$id" "$paths" "$requires" "$conflicts" 0 "$desc"
     done < "$f"
   done
 
@@ -143,7 +181,7 @@ selection_load_items() {
 # ordering is what makes the list readable.
 selection_sort_items() {
   local c i n=0
-  local -a NC=() NK=() NI=() NN=() NP=() NR=() NX=() NL=()
+  local -a NC=() NK=() NI=() NN=() NP=() NR=() NX=() NL=() ND=()
   c=0
   while (( c < CAT_N )); do
     for pass in 1 0; do
@@ -153,7 +191,7 @@ selection_sort_items() {
           NC[n]="${ITEM_CAT[$i]}"; NK[n]="${ITEM_KIND[$i]}"; NI[n]="${ITEM_ID[$i]}"
           NN[n]="${ITEM_NAME[$i]}"; NP[n]="${ITEM_PATHS[$i]}"
           NR[n]="${ITEM_REQUIRES[$i]}"; NX[n]="${ITEM_CONFLICTS[$i]}"
-          NL[n]="${ITEM_LOCKED[$i]}"
+          NL[n]="${ITEM_LOCKED[$i]}"; ND[n]="${ITEM_DESC[$i]}"
           n=$((n + 1))
         fi
         i=$((i + 1))
@@ -163,13 +201,13 @@ selection_sort_items() {
   done
   ITEM_N=$n
   ITEM_CAT=(); ITEM_KIND=(); ITEM_ID=(); ITEM_NAME=()
-  ITEM_PATHS=(); ITEM_REQUIRES=(); ITEM_CONFLICTS=(); ITEM_LOCKED=()
+  ITEM_PATHS=(); ITEM_REQUIRES=(); ITEM_CONFLICTS=(); ITEM_LOCKED=(); ITEM_DESC=()
   i=0
   while (( i < n )); do
     ITEM_CAT[i]="${NC[$i]}"; ITEM_KIND[i]="${NK[$i]}"; ITEM_ID[i]="${NI[$i]}"
     ITEM_NAME[i]="${NN[$i]}"; ITEM_PATHS[i]="${NP[$i]}"
     ITEM_REQUIRES[i]="${NR[$i]}"; ITEM_CONFLICTS[i]="${NX[$i]}"
-    ITEM_LOCKED[i]="${NL[$i]}"
+    ITEM_LOCKED[i]="${NL[$i]}"; ITEM_DESC[i]="${ND[$i]}"
     i=$((i + 1))
   done
 }

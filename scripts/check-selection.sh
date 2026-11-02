@@ -36,6 +36,18 @@ else
   fail "manifest loads" "got $ITEM_N items in $CAT_N categories"
 fi
 
+MISSING_DESC=0
+i=0
+while (( i < ITEM_N )); do
+  [[ -z "${ITEM_DESC[$i]}" ]] && MISSING_DESC=$((MISSING_DESC + 1))
+  i=$((i + 1))
+done
+if (( MISSING_DESC == 0 )); then
+  pass "descriptions" "every item has a summary"
+else
+  fail "descriptions" "$MISSING_DESC item(s) missing a summary"
+fi
+
 selection_defaults
 if [[ "$(selection_selected_count)" == "5" ]] && sel_has config:opencode; then
   pass "first-run defaults" "5 config toggles, no packages"

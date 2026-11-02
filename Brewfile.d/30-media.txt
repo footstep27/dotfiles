@@ -1,15 +1,15 @@
 # name: Media
-brew	exiftool
-brew	ffmpeg	conflicts=brew:ffmpeg-full
-brew	ffmpeg-full	conflicts=brew:ffmpeg
-brew	imagemagick	conflicts=brew:imagemagick-full
-brew	imagemagick-full	conflicts=brew:imagemagick
-brew	mpv
-brew	resvg
-brew	yt-dlp
-cask	doxie
-cask	garmin-express
-cask	imageoptim
-cask	insta360-link-controller
-cask	steam
-cask	studiolinkstandalone
+brew	exiftool		Reads and writes metadata in images, video and audio files.
+brew	ffmpeg	conflicts=brew:ffmpeg-full	Audio and video conversion, recording and streaming toolkit.
+brew	ffmpeg-full	conflicts=brew:ffmpeg	FFmpeg build with all optional codecs and libraries.
+brew	imagemagick	conflicts=brew:imagemagick-full	Image conversion, resizing and manipulation suite.
+brew	imagemagick-full	conflicts=brew:imagemagick	ImageMagick build with extra delegates and formats.
+brew	mpv		Minimal, keyboard-driven media player.
+brew	resvg		Fast SVG renderer and rasterizer.
+brew	yt-dlp		Downloader for YouTube and many other video sites.
+cask	doxie		Companion app for Doxie document scanners.
+cask	garmin-express		Syncs Garmin devices and installs firmware updates.
+cask	imageoptim		Lossless compression that shrinks images on the Mac.
+cask	insta360-link-controller		Controller app for Insta360 webcams.
+cask	steam		Game store, library and launcher.
+cask	studiolinkstandalone		SIP audio-over-IP client for podcasting and streaming.

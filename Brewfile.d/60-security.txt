@@ -1,11 +1,11 @@
 # name: Security
-brew	gnupg
-brew	magic-wormhole
-brew	mkcert
-brew	pinentry-mac
-brew	ykman
-cask	cryptomator
-cask	gpg-suite
-cask	keepassxc
-cask	mullvad-vpn
-cask	protonvpn
+brew	gnupg		GNU Privacy Guard for encryption, signing and key management.
+brew	magic-wormhole		Transfers files between machines with a short one-time code.
+brew	mkcert		Creates locally-trusted TLS certificates for development.
+brew	pinentry-mac		macOS passphrase prompt used by GPG.
+brew	ykman		YubiKey manager for OTP, FIDO and PIV configuration.
+cask	cryptomator		Client-side encryption for files stored in the cloud.
+cask	gpg-suite		GPG tools with Finder and Apple Mail integration.
+cask	keepassxc		Offline, open-source password manager.
+cask	mullvad-vpn		Privacy-focused VPN client with flat-rate pricing.
+cask	protonvpn		VPN client from Proton.
