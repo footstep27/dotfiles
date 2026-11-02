@@ -24,6 +24,25 @@ A tool the shell detects and uses when present, and skips when absent; its absen
 verification warning.
 _Avoid_: soft dependency, nice-to-have
 
+**Selection**:
+The set of optional items checked for one machine and saved outside the repository; machines
+differ only by their selection.
+_Avoid_: profile, preset, machine type
+
+**Optional category**:
+One editable manifest under `Brewfile.d/` that groups optional items for display and maps them
+to a generated Brewfile fragment.
+_Avoid_: bundle, group, pack
+
+**Required baseline**:
+The entries in `Brewfile` that every machine installs; they appear as locked rows in the menu
+and are never part of the selection.
+_Avoid_: mandatory set, core package
+
+**Config toggle**:
+A managed-file group that can be applied independently of whether its tool is installed.
+_Avoid_: config profile, optional file
+
 **Managed file**:
 A file in this repository that chezmoi copies into `$HOME`.
 _Avoid_: dotfile

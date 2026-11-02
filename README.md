@@ -93,8 +93,11 @@ brew bundle check  --file="$HOME/Repositories/dotfiles/Brewfile"
 brew bundle install --file="$HOME/Repositories/dotfiles/Brewfile"
 ```
 
-`Brewfile` is the required set; `Brewfile.optional` is a snapshot of everything else and is
-installed only on request.
+`Brewfile` is the required baseline and is installed on every machine. Everything else comes
+from the optional inventory in `Brewfile.d/`, selected per machine with
+`./bootstrap.sh --select`. The choice is saved in
+`~/.local/state/dotfiles/selection`; bootstrap materializes it into
+`~/.local/state/dotfiles/Brewfile.selected` and installs that.
 
 ## Adding something new
 
@@ -108,7 +111,8 @@ Rules for this repo:
 
 - Anything that should land in `$HOME` belongs in the source tree as `dot_*` / `dot_config/…`.
 - Anything repo-only (docs, scripts, project skills, manifests) must be listed in
-  `.chezmoiignore` — `docs/`, `scripts/`, `.opencode/`, `README.md`, and the Brewfiles already are.
+  `.chezmoiignore` — `docs/`, `scripts/`, `.opencode/`, `README.md`, `Brewfile`, and
+  `Brewfile.d/` already are.
 - Prefer `--secrets error` when adding files. `verify.sh` also fails if a known secret or
   state path becomes managed.
 - Encryption is wired (age) but idle. Back up `~/.config/chezmoi/key.txt` before the first
@@ -127,17 +131,27 @@ manual:
 xcode-select --install                                     # GUI dialog; click through it
 git clone https://github.com/footstep27/dotfiles.git ~/Repositories/dotfiles
 cd ~/Repositories/dotfiles
-./bootstrap.sh --dry-run     # see the plan
-./bootstrap.sh
+./bootstrap.sh --dry-run     # see the plan (checklist is read-only)
+./bootstrap.sh               # first run opens the optional checklist
 ```
 
 HTTPS on purpose: a bare machine has no SSH key yet.
 
+On the first interactive run, a single checklist opens: eight categories of optional software
+plus config toggles for the required tools. `space` toggles, `a`/`n` select or clear a
+category, `A`/`N` do the same for everything, `/` filters, and `enter` saves. Optional
+packages start unchecked; required packages are locked. Later runs reuse the saved selection,
+so `--select` is the command to revisit it.
+
 `bootstrap.sh` is idempotent and runs, in order: Command Line Tools pre-flight → Homebrew
-(installing it if absent) → `Brewfile` → chezmoi source wiring (including the age recipient)
-→ archive of managed dotfiles when any drifted → `chezmoi apply` → Oh My Zsh and
-powerlevel10k at their pinned commits → Ghostty terminfo → tmux plugins at their pinned refs
-→ yazi packages → `scripts/verify.sh`.
+(installing it if absent) → optional inventory → `Brewfile` → selected optional packages →
+chezmoi source wiring (including the age recipient) → archive of managed dotfiles when any
+drifted → `chezmoi apply` → Oh My Zsh and powerlevel10k at their pinned commits → Ghostty
+terminfo → tmux plugins at their pinned refs → yazi packages → `scripts/verify.sh`.
+
+The selection file is machine state, never repository content. Deselecting an item only skips
+its installation; it never uninstalls anything. To remove a config that is no longer selected,
+run `./bootstrap.sh --prune`.
 
 The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore it with
 `tar -xzf … -C /`. Later runs only archive when local files have drifted from the repo.
@@ -149,13 +163,13 @@ The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore i
 | Shell | `.zshrc`, `.zprofile`, `.zshenv`, `.p10k.zsh`, legacy `.tcshrc` and `.profile` |
 | Ghostty | `~/.config/ghostty/config` |
 | tmux | `.tmux.conf` (plugins pinned here, installed via TPM) |
-| WezTerm | `.wezterm.lua` + the one theme file actually used |
+| WezTerm | `.wezterm.lua` + the one theme file actually used, applied only when the WezTerm cask is selected |
 | TUIs | `yazi` config, `btop` config and its Catppuccin Macchiato theme |
 | Fonts | Maple Mono NF, installed from the required `Brewfile` — nothing manual |
 | Git | global `.gitconfig` |
 | OpenCode | `~/.config/opencode/cli.json` (theme, diffs, session UI) and `opencode.jsonc` (global config) |
 | Agent skills | global `~/.agents/skills` + `.skill-lock.json`; the project skill lives in `.opencode/skills/diagram-design/` (repo-only) |
-| Packages | `Brewfile` (required), `Brewfile.optional` (snapshot, installed on request) |
+| Packages | `Brewfile` (required), `Brewfile.d/` (optional categories, selected per machine) |
 
 Deliberately **not** managed: credentials (GPG keys, `gh`), OpenCode secrets and state
 (`~/.local/share/opencode/auth.json`, both `service.json` files, `opencode.db*`, plugin
@@ -171,10 +185,10 @@ config, `chezmoi add` it.
 
 ## What a fresh machine gets
 
-`./bootstrap.sh` installs the required Homebrew set, copies the configs below into `$HOME`,
-then installs tmux plugins and yazi packages from their own upstreams. `Brewfile.optional`
-is **not** part of that run: it is a snapshot of everything else on this machine, installed
-on request.
+`./bootstrap.sh` installs the required Homebrew set, installs the optional packages you
+checked, copies the selected configs into `$HOME`, then installs tmux plugins and yazi
+packages from their own upstreams. Optional packages are not installed unless selected; the
+required baseline is never optional.
 
 ### Packages
 
@@ -245,7 +259,7 @@ developer toolchain a given machine may not need, or the full app inventory.
 | Not installed | Why |
 |---|---|
 | **Rust, nvm, Docker, Herd** | Guarded in the shell configs: absent means a warning from `verify.sh`, never an error. |
-| **`Brewfile.optional`** | A snapshot of every other app on this machine. Install with `brew bundle install --file=Brewfile.optional` if you want all of it. |
+| **Anything not checked in the inventory** | Optional software is a per-machine selection. Run `./bootstrap.sh --select`; `--all-optional` selects every non-conflicting item. |
 
 ## Verifying
 
@@ -253,14 +267,18 @@ developer toolchain a given machine may not need, or the full app inventory.
 ./scripts/verify.sh            # the applied machine: apps, pty, tmux, fonts
 ./scripts/verify.sh --static   # repo-side only: manifest, dependencies, pins
 ./scripts/check-bare-shell.sh  # simulated bare Mac: no Rust, nvm, Docker, Herd
+./scripts/check-selection.sh   # inventory parser, conflicts, cascades, prune
 ```
 
 `verify.sh` prints one row per check, `pass` / `warn` / `FAIL`, and exits non-zero only on
 failure. It asserts behaviour, not file contents: the Ghostty config parses, text and icon
 faces resolve, zsh loads cleanly through a pty, tmux starts with every plugin at its pinned
 ref, and the required tools are actually on `PATH`. Missing requirements fail; absent
-optional toolchains warn. Two checks are about the repo rather than the machine: one fails if
-a font binary becomes tracked, the other if a managed config contains something secret-shaped.
+optional toolchains warn. The machine is also judged against its own selection: checked
+optional packages and configs must be present, unchecked ones are ignored, and a config left
+behind by an old selection warns until `--prune` removes it. Two checks are about the repo
+rather than the machine: one fails if a font binary becomes tracked, the other if a managed
+config contains something secret-shaped.
 
 `--static` skips everything that needs Ghostty, a pty or a tmux server, which makes it the
 mode to run on a machine that has just finished bootstrapping.
@@ -273,8 +291,8 @@ any error reaches the terminal. It is the proof that the shell degrades instead 
 ## What stays manual after bootstrap
 
 1. **Default terminal app.** macOS has no dependable CLI for this. Set Ghostty as the default
-   in System Settings (or via Finder's "Open With"). iTerm2 and WezTerm stay installed as
-   fallbacks.
+   in System Settings (or via Finder's "Open With"). iTerm2 and WezTerm are optional inventory
+   items if you want fallbacks.
 
 That is the complete list. The fonts are installed from the `Brewfile`, so there is nothing
 to download by hand.
@@ -293,18 +311,25 @@ to download by hand.
 ## Layout
 
 ```
-bootstrap.sh            fresh-machine entry point (--dry-run supported)
+bootstrap.sh            fresh-machine entry point (--select, --dry-run, --prune)
+scripts/select.sh       pure-Bash optional inventory checklist
+scripts/lib-selection.sh  manifest parser, selection model, generators
 scripts/verify.sh       behaviour checks for the applied machine
 scripts/check-bare-shell.sh  simulated bare Mac: the shell must start clean
-GLOSSARY.md             terms: bare Mac, applied machine, required vs optional
+scripts/check-selection.sh  inventory parser, conflicts, cascades, prune
+GLOSSARY.md             terms: bare Mac, applied machine, selection, required baseline
 Brewfile                required packages
-Brewfile.optional       snapshot of the rest of the inventory
+Brewfile.d/             optional categories, one editable manifest per group
 dot_* / dot_config/     chezmoi-managed configs (names map to $HOME)
 dot_agents/             global agent skills + lockfile (chezmoi-managed)
 dot_tmux.conf           tmux, including pinned plugin refs
 .opencode/skills/       project skill, repo-only (chezmoi-ignored)
 docs/                   fonts, themes, decisions, diagram sources
 ```
+
+`~/.local/state/dotfiles/` is not part of the repo: it holds the saved `selection`, the
+generated `Brewfile.selected`, and the generated `ignored-paths` list that `.chezmoiignore`
+reads.
 
 The README diagram is generated, not hand-drawn: edit `docs/diagrams/repo-overview.html`
 (and `-dark.html`), then re-export with the diagram-design skill:
@@ -322,6 +347,9 @@ python3 .opencode/skills/diagram-design/scripts/export_svg.py \
 - **A bare Mac is the success criterion.** Required versus optional is a deliberate split, not
   an accident of what happens to be installed: see
   [`docs/adr/0003-bare-mac-as-the-goal.md`](docs/adr/0003-bare-mac-as-the-goal.md).
+- **Optional software is a per-machine selection, not a profile.** One checklist, one saved
+  selection per machine, and configs that follow their package or toggle independently: see
+  [`docs/adr/0005-interactive-optional-inventory.md`](docs/adr/0005-interactive-optional-inventory.md).
 - **Option stays a character key** on the German layout (`macos-option-as-alt = false`).
   Option types `@ { } [ ] | \ ~ €`; word movement lives on `Ctrl+Left/Right` and
   `Ctrl+Backspace`, bound in `.zshrc`.

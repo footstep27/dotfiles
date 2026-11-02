@@ -21,3 +21,8 @@
 	conflictstyle = diff3
 [diff]
 	colorMoved = default
+
+# Machine-local identity and overrides. Deliberately untracked: a work machine
+# sets its own name/email here without forking this file.
+[include]
+	path = ~/.gitconfig.local

@@ -1,0 +1,20 @@
+# name: Dev apps
+cask	codexbar
+cask	docker-desktop
+cask	hermes-desktop
+cask	iterm2
+cask	visual-studio-code
+cask	wezterm	paths=.wezterm.lua,.wezterm-themes/
+vscode	catppuccin.catppuccin-vsc	requires=cask:visual-studio-code
+vscode	catppuccin.catppuccin-vsc-icons	requires=cask:visual-studio-code
+vscode	ms-azuretools.vscode-containers	requires=cask:visual-studio-code
+vscode	ms-python.debugpy	requires=cask:visual-studio-code
+vscode	ms-python.python	requires=cask:visual-studio-code
+vscode	ms-python.vscode-pylance	requires=cask:visual-studio-code
+vscode	ms-python.vscode-python-envs	requires=cask:visual-studio-code
+vscode	ms-vscode-remote.remote-containers	requires=cask:visual-studio-code
+vscode	myriad-dreamin.tinymist	requires=cask:visual-studio-code
+vscode	openai.chatgpt	requires=cask:visual-studio-code
+vscode	openai.codex-audio	requires=cask:visual-studio-code
+vscode	teabyii.ayu	requires=cask:visual-studio-code
+vscode	tomoki1207.pdf	requires=cask:visual-studio-code

@@ -18,6 +18,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FAILURES=0
 STATIC=0
 
+DOTFILES_ROOT="$ROOT"
+# shellcheck source=lib-selection.sh
+source "$ROOT/scripts/lib-selection.sh"
+
 for arg in "$@"; do
   case "$arg" in
     --static) STATIC=1 ;;
@@ -89,6 +93,66 @@ if [[ ${#MISSING[@]} -eq 0 ]]; then
   pass "required tools" "${#REQUIRED_CMDS[@]} commands + 2 shell plugins"
 else
   fail "required tools" "missing: ${MISSING[*]}"
+fi
+
+# ---------------------------------------------------- Optional selection
+# The machine is judged against its own saved selection, not the full inventory.
+selection_load_items
+SELECTION_PRESENT=0
+selection_load_file && SELECTION_PRESENT=1 || true
+
+# Before a selection exists (an older machine, or a fresh checkout), treat every
+# config as enabled so the check does not fail the upgrade.
+config_enabled() {
+  if (( SELECTION_PRESENT )); then sel_has "$1"; else return 0; fi
+}
+
+if (( SELECTION_PRESENT )); then
+  TMP_BREWFILE="$(mktemp "${TMPDIR:-/tmp}/verify-brewfile.XXXXXX")"
+  ( DOTFILES_BREWFILE="$TMP_BREWFILE"; selection_render_brewfile )
+  if grep -qE '^(brew|cask|vscode|npm) ' "$TMP_BREWFILE"; then
+    if command -v brew >/dev/null 2>&1 \
+       && HOMEBREW_NO_AUTO_UPDATE=1 brew bundle check --file="$TMP_BREWFILE" >/dev/null 2>&1; then
+      pass "optional packages" "selection satisfied"
+    else
+      fail "optional packages" "run: $ROOT/bootstrap.sh --select"
+    fi
+  else
+    pass "optional packages" "none selected"
+  fi
+  rm -f "$TMP_BREWFILE"
+
+  CONFIG_ISSUES=(); STALE_CONFIGS=()
+  i=0
+  while (( i < ITEM_N )); do
+    if [[ -n "${ITEM_PATHS[$i]}" ]]; then
+      if sel_has "${ITEM_ID[$i]}"; then
+        first_path="${ITEM_PATHS[$i]%%,*}"
+        [[ -e "$HOME/$first_path" || -L "$HOME/$first_path" ]] \
+          || CONFIG_ISSUES+=("${ITEM_ID[$i]}")
+      else
+        for p in ${ITEM_PATHS[$i]//,/ }; do
+          if [[ -e "$HOME/$p" || -L "$HOME/$p" ]]; then
+            STALE_CONFIGS+=("${ITEM_ID[$i]}")
+            break
+          fi
+        done
+      fi
+    fi
+    i=$((i + 1))
+  done
+  if [[ ${#CONFIG_ISSUES[@]} -eq 0 ]]; then
+    pass "selected configs" "all applied"
+  else
+    fail "selected configs" "missing: ${CONFIG_ISSUES[*]}"
+  fi
+  if [[ ${#STALE_CONFIGS[@]} -eq 0 ]]; then
+    pass "deselected configs" "not applied"
+  else
+    warn "deselected configs" "stale, remove with: $ROOT/bootstrap.sh --prune (${STALE_CONFIGS[*]})"
+  fi
+else
+  warn "optional selection" "none saved — run: $ROOT/bootstrap.sh --select"
 fi
 
 # ------------------------------------------------------- Shell framework
@@ -184,15 +248,19 @@ fi
 
 # ------------------------------------------------------------- Config parses
 if [[ -n "$GHOSTTY_BIN" ]]; then
-  CONFIG="$HOME/.config/ghostty/config"
-  if [[ ! -f "$CONFIG" ]]; then
-    fail "ghostty config" "missing $CONFIG"
+  if ! config_enabled config:ghostty; then
+    warn "ghostty config" "not selected"
   else
-    CONFIG_ERRORS="$("$GHOSTTY_BIN" +validate-config --config-file="$CONFIG" 2>&1)"
-    if [[ -z "$CONFIG_ERRORS" ]]; then
-      pass "ghostty config parses"
+    CONFIG="$HOME/.config/ghostty/config"
+    if [[ ! -f "$CONFIG" ]]; then
+      fail "ghostty config" "missing $CONFIG"
     else
-      fail "ghostty config parses" "$(printf '%s' "$CONFIG_ERRORS" | head -1)"
+      CONFIG_ERRORS="$("$GHOSTTY_BIN" +validate-config --config-file="$CONFIG" 2>&1)"
+      if [[ -z "$CONFIG_ERRORS" ]]; then
+        pass "ghostty config parses"
+      else
+        fail "ghostty config parses" "$(printf '%s' "$CONFIG_ERRORS" | head -1)"
+      fi
     fi
   fi
 
@@ -218,20 +286,24 @@ fi
 
 # ---------------------------------------------------------------- btop theme
 if command -v btop >/dev/null 2>&1; then
-  BTOP_CONFIG="$HOME/.config/btop/btop.conf"
-  BTOP_THEME="$(awk -F'"' '/^color_theme/ {print $2}' "$BTOP_CONFIG" 2>/dev/null)"
-  case "$BTOP_THEME" in
-    ""|Default|TTY)
-      pass "btop theme" "${BTOP_THEME:-builtin}"
-      ;;
-    *)
-      if [[ -f "$HOME/.config/btop/themes/$BTOP_THEME.theme" ]]; then
-        pass "btop theme" "$BTOP_THEME"
-      else
-        fail "btop theme" "config names '$BTOP_THEME' but that theme file is missing"
-      fi
-      ;;
-  esac
+  if ! config_enabled config:btop; then
+    warn "btop theme" "not selected"
+  else
+    BTOP_CONFIG="$HOME/.config/btop/btop.conf"
+    BTOP_THEME="$(awk -F'"' '/^color_theme/ {print $2}' "$BTOP_CONFIG" 2>/dev/null)"
+    case "$BTOP_THEME" in
+      ""|Default|TTY)
+        pass "btop theme" "${BTOP_THEME:-builtin}"
+        ;;
+      *)
+        if [[ -f "$HOME/.config/btop/themes/$BTOP_THEME.theme" ]]; then
+          pass "btop theme" "$BTOP_THEME"
+        else
+          fail "btop theme" "config names '$BTOP_THEME' but that theme file is missing"
+        fi
+        ;;
+    esac
+  fi
 else
   fail "btop" "not installed"
 fi
@@ -255,7 +327,9 @@ else
 fi
 
 # --------------------------------------------------------------- tmux config
-if command -v tmux >/dev/null 2>&1; then
+if ! config_enabled config:tmux; then
+  warn "tmux config" "not selected"
+elif command -v tmux >/dev/null 2>&1; then
   SOCKET="verify-$$"
   if tmux -L "$SOCKET" new-session -d 2>/dev/null; then
     DEFAULT_TERMINAL="$(tmux -L "$SOCKET" show -g default-terminal 2>/dev/null)"
@@ -304,7 +378,9 @@ fi
 
 # ------------------------------------------------------------ OpenCode config
 if command -v chezmoi >/dev/null 2>&1; then
-  if command -v python3 >/dev/null 2>&1 \
+  if ! config_enabled config:opencode; then
+    warn "opencode config" "not selected"
+  elif command -v python3 >/dev/null 2>&1 \
      && python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$HOME/.config/opencode/cli.json" 2>/dev/null; then
     pass "opencode config" "cli.json parses"
   else

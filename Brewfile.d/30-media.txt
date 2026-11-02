@@ -1,0 +1,15 @@
+# name: Media
+brew	exiftool
+brew	ffmpeg	conflicts=brew:ffmpeg-full
+brew	ffmpeg-full	conflicts=brew:ffmpeg
+brew	imagemagick	conflicts=brew:imagemagick-full
+brew	imagemagick-full	conflicts=brew:imagemagick
+brew	mpv
+brew	resvg
+brew	yt-dlp
+cask	doxie
+cask	garmin-express
+cask	imageoptim
+cask	insta360-link-controller
+cask	steam
+cask	studiolinkstandalone

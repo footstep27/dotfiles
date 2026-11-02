@@ -1,0 +1,9 @@
+# name: Communication
+cask	discord
+cask	proton-mail
+cask	signal
+cask	slack
+cask	telegram
+cask	thunderbird
+cask	whatsapp
+cask	zoom

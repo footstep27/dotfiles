@@ -1,0 +1,12 @@
+# name: System
+brew	dua-cli
+brew	dust
+brew	fclones
+brew	libimobiledevice
+brew	ncdu
+brew	rmlint
+brew	sevenzip
+brew	simg2img
+cask	android-platform-tools
+cask	blip
+cask	fuse-t	requires=tap:macos-fuse-t/cask

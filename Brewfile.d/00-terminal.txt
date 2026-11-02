@@ -1,0 +1,9 @@
+# name: Terminal
+# Required tools and the configs that belong to them. Required packages are
+# injected from ../Brewfile as locked rows; these lines are the config toggles.
+config	ghostty	paths=.config/ghostty/config
+config	tmux	paths=.tmux.conf
+config	btop	paths=.config/btop/btop.conf,.config/btop/themes/catppuccin_macchiato.theme
+# my-commands.yazi stays outside the toggle: it has no upstream and is part of
+# the repo, so it is always managed.
+config	yazi	paths=.config/yazi/yazi.toml,.config/yazi/keymap.toml,.config/yazi/theme.toml,.config/yazi/init.lua,.config/yazi/package.toml

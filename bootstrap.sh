@@ -1,19 +1,55 @@
 #!/usr/bin/env bash
 # Take a bare Mac to the applied dotfiles setup.
 #
-#   ./bootstrap.sh            # do it
-#   ./bootstrap.sh --dry-run  # show the plan, change nothing
+#   ./bootstrap.sh                     # do it, reusing the saved selection
+#   ./bootstrap.sh --select            # edit the optional inventory
+#   ./bootstrap.sh --all-optional      # select every non-conflicting optional item
+#   ./bootstrap.sh --reset-selection   # forget the saved selection
+#   ./bootstrap.sh --prune             # delete configs the selection excludes
+#   ./bootstrap.sh --dry-run           # show the plan, change nothing
 #
 # Idempotent: safe to re-run after a partial failure or to pick up updates.
-# Order matters — Command Line Tools → brew → required packages → chezmoi/age →
-# apply → shell framework → tmux plugins → yazi packages → verify — because
-# chezmoi must write the configs before anything reads them.
+# Order matters — Command Line Tools → brew → optional inventory → required
+# packages → optional packages → chezmoi/age → apply → shell framework → tmux
+# plugins → yazi packages → verify — because chezmoi must write the configs
+# before anything reads them.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRY_RUN=0
-if [[ "${1:-}" == "--dry-run" ]]; then DRY_RUN=1; fi
+DO_SELECT=0
+ALL_OPTIONAL=0
+RESET_SELECTION=0
+PRUNE=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)         DRY_RUN=1 ;;
+    --select)          DO_SELECT=1 ;;
+    --all-optional)    ALL_OPTIONAL=1 ;;
+    --reset-selection) RESET_SELECTION=1 ;;
+    --prune)           PRUNE=1 ;;
+    -h|--help)
+      sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    *)
+      printf 'bootstrap: unknown option %s\n' "$1" >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+if (( DO_SELECT && ALL_OPTIONAL )); then
+  printf 'bootstrap: --select and --all-optional are mutually exclusive\n' >&2
+  exit 2
+fi
+
+DOTFILES_ROOT="$ROOT"
+# shellcheck source=scripts/lib-selection.sh
+source "$ROOT/scripts/lib-selection.sh"
 
 if [[ -t 1 ]]; then
   BOLD=$'\033[1m'; DIM=$'\033[2m'; RED=$'\033[31m'; GREEN=$'\033[32m'
@@ -59,7 +95,81 @@ else
   fi
 fi
 
-# ------------------------------------------------------- 3. Required packages
+# --------------------------------------------------- 3. Optional inventory
+# The selection is machine-local state, not repository content. First run on a
+# terminal opens the checklist; later runs reuse the saved file. --dry-run
+# browses read-only and never writes it.
+step "Optional inventory"
+selection_load_items
+SELECTION_SAVED=0
+selection_load_file && SELECTION_SAVED=1 || true
+selection_prune_dependents
+
+if (( RESET_SELECTION )); then
+  if (( DRY_RUN )); then
+    SELECTED=$'\n'
+    SELECTION_SAVED=0
+    info "would clear the saved selection"
+  else
+    selection_reset
+    SELECTION_SAVED=0
+    info "saved selection cleared"
+  fi
+fi
+
+if (( ALL_OPTIONAL )); then
+  selection_select_all
+  SELECTION_SAVED=1
+  info "selected every non-conflicting optional item"
+fi
+
+if (( DRY_RUN )); then
+  if (( DO_SELECT )) || { (( ! SELECTION_SAVED )) && [[ -t 0 && -t 1 ]]; }; then
+    "$ROOT/scripts/select.sh" --readonly || true
+    selection_load_file && SELECTION_SAVED=1 || true
+    (( SELECTION_SAVED )) || selection_defaults
+  elif (( ! SELECTION_SAVED )); then
+    selection_defaults
+  fi
+  info "would use $(selection_selected_count)/$(selection_optional_count) optional items"
+  if [[ -f "$DOTFILES_SELECTION_FILE" ]]; then
+    info "selection file: $DOTFILES_SELECTION_FILE"
+  else
+    info "no saved selection — first run would open the checklist"
+  fi
+  PKG_COUNT=0
+  i=0
+  while (( i < ITEM_N )); do
+    if [[ "${ITEM_LOCKED[$i]}" != 1 ]] && sel_has "${ITEM_ID[$i]}" \
+       && [[ "${ITEM_KIND[$i]}" != "config" ]]; then
+      info "would install: ${ITEM_KIND[$i]} ${ITEM_NAME[$i]}"
+      PKG_COUNT=$((PKG_COUNT + 1))
+    fi
+    i=$((i + 1))
+  done
+  (( PKG_COUNT )) || info "no optional packages selected"
+else
+  if (( DO_SELECT )); then
+    "$ROOT/scripts/select.sh" || fail "selection cancelled — nothing installed"
+    selection_load_file || true
+    SELECTION_SAVED=1
+  elif (( ! SELECTION_SAVED )); then
+    if [[ -t 0 && -t 1 ]]; then
+      "$ROOT/scripts/select.sh" || fail "selection cancelled — nothing installed"
+      selection_load_file || true
+      SELECTION_SAVED=1
+    else
+      selection_defaults
+      warn "no terminal and no saved selection — applying required configs only"
+      SELECTION_SAVED=1
+    fi
+  fi
+  selection_generate
+  selection_save
+  info "selected $(selection_selected_count)/$(selection_optional_count) optional items"
+fi
+
+# ------------------------------------------------------- 4. Required packages
 step "Required packages"
 if (( DRY_RUN )); then
   info "would run: brew bundle install --file=$ROOT/Brewfile"
@@ -68,9 +178,20 @@ else
     || fail "brew bundle install failed"
 fi
 
+# ------------------------------------------------------- 5. Optional packages
+step "Optional packages"
+if (( DRY_RUN )); then
+  info "would install the selected optional packages listed above"
+elif grep -qE '^(brew|cask|vscode|npm) ' "$DOTFILES_BREWFILE" 2>/dev/null; then
+  HOMEBREW_NO_AUTO_UPDATE=1 brew bundle install --file="$DOTFILES_BREWFILE" \
+    || fail "optional brew bundle install failed"
+else
+  info "none selected"
+fi
+
 command -v chezmoi >/dev/null 2>&1 || (( DRY_RUN )) || fail "chezmoi missing after bundle"
 
-# -------------------------------------------------------- 4. chezmoi source
+# -------------------------------------------------------- 6. chezmoi source
 step "chezmoi source"
 CHEZMOI_CONFIG="$HOME/.config/chezmoi/chezmoi.toml"
 CHEZMOI_AGE_KEY="$HOME/.config/chezmoi/key.txt"
@@ -124,7 +245,7 @@ else
   ensure_chezmoi_config
 fi
 
-# ------------------------------------------------------------- 5. Backup drift
+# ------------------------------------------------------------- 7. Backup drift
 step "Backup"
 if (( DRY_RUN )); then
   info "would back up existing dotfiles that differ from the repo"
@@ -150,7 +271,7 @@ else
   fi
 fi
 
-# ---------------------------------------------------------------- 6. Apply
+# ---------------------------------------------------------------- 8. Apply
 step "Apply"
 if (( DRY_RUN )); then
   chezmoi apply --dry-run --verbose 2>&1 | sed 's/^/    /' || true
@@ -158,7 +279,18 @@ else
   chezmoi apply --verbose 2>&1 | sed 's/^/    /'
 fi
 
-# ---------------------------------------------------- 7. Shell framework
+# ---------------------------------------------------------------- 9. Prune
+if (( PRUNE )); then
+  step "Prune deselected configs"
+  if (( DRY_RUN )); then
+    info "would delete managed files for unchecked config toggles"
+  else
+    REMOVED="$(selection_prune_paths)"
+    info "removed $REMOVED path(s)"
+  fi
+fi
+
+# --------------------------------------------------- 10. Shell framework
 # Oh My Zsh publishes no tags, so both pins are commit SHAs: the pair this
 # machine runs today. Moving either is a deliberate edit, not a side effect of
 # the day the machine was built.
@@ -219,7 +351,7 @@ else
     "$P10K_PIN" "powerlevel10k" || true
 fi
 
-# -------------------------------------------------- 8. Ghostty terminfo
+# ------------------------------------------------- 11. Ghostty terminfo
 # Ghostty keeps its terminfo inside the app bundle, where ncurses will not look.
 # tmux (and anything over ssh) needs TERM=xterm-ghostty to be resolvable, so the
 # bundled entries are copied into the standard per-user location.
@@ -252,7 +384,7 @@ else
   warn "Ghostty bundle not found — skipping terminfo"
 fi
 
-# -------------------------------------------------------- 9. tmux plugins
+# ------------------------------------------------------- 12. tmux plugins
 # TPM installs missing plugins but never checks out the ref declared after '#',
 # so the pins are applied explicitly here.
 step "tmux plugins"
@@ -278,18 +410,22 @@ install_tmux_plugins() {
   done < <(sed -n "s/^[[:space:]]*set -g @plugin '\(.*\)'.*/\1/p" "$HOME/.tmux.conf")
 }
 
-if (( DRY_RUN )); then
+if ! sel_has config:tmux; then
+  info "skipped: tmux config not selected"
+elif (( DRY_RUN )); then
   info "would install tmux plugins and check out pinned refs"
 else
   install_tmux_plugins
   info "plugins: $(ls "$HOME/.tmux/plugins" | tr '\n' ' ')"
 fi
 
-# -------------------------------------------------------- 10. yazi packages
+# ------------------------------------------------------- 13. yazi packages
 # Flavors and plugins are not vendored; package.toml pins them and `ya`
 # installs the exact refs recorded there.
 step "yazi packages"
-if (( DRY_RUN )); then
+if ! sel_has config:yazi; then
+  info "skipped: yazi config not selected"
+elif (( DRY_RUN )); then
   info "would install yazi packages pinned in ~/.config/yazi/package.toml"
 elif command -v ya >/dev/null 2>&1; then
   ya pkg install
@@ -298,7 +434,7 @@ else
   warn "ya not found — skipping yazi packages"
 fi
 
-# ---------------------------------------------------------------- 11. Verify
+# --------------------------------------------------------------- 14. Verify
 step "Verify"
 if [[ -x "$ROOT/scripts/verify.sh" ]]; then
   if (( DRY_RUN )); then

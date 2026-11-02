@@ -1,0 +1,10 @@
+# name: Productivity
+cask	bloom
+cask	cyberduck
+cask	home-assistant
+cask	joplin
+cask	moneymoney
+cask	nextcloud
+cask	obsidian
+cask	omnifocus
+cask	tigervnc

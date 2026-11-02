@@ -7,11 +7,14 @@ scripts/
 .gitignore
 .chezmoiignore
 Brewfile
-Brewfile.optional
+Brewfile.d/
 bootstrap.sh
 LICENSE
 THIRD-PARTY-NOTICES.md
 GLOSSARY.md
+
+# Machine-local selection state and the files generated from it.
+.local/state/dotfiles/
 
 # OpenCode secrets and machine-local state never belong in git.
 # These are target paths, so they guard against a future `chezmoi add --recursive`.
@@ -30,3 +33,12 @@ GLOSSARY.md
 .config/yazi/plugins/*
 !.config/yazi/plugins/my-commands.yazi/
 .config/yazi/flavors/
+
+# Optional managed files the current selection does not include. bootstrap.sh
+# writes the list from the manifests; this template is the only consumer.
+{{- $ignore := joinPath .chezmoi.homeDir ".local/state/dotfiles/ignored-paths" }}
+{{- if stat $ignore }}
+{{ range (outputList "cat" (list $ignore) | splitList "\n") }}
+{{ if . }}{{ . }}
+{{ end }}{{ end }}
+{{- end }}

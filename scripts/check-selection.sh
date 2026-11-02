@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Does the optional inventory parser, selection model and generators behave?
+#
+#   ./scripts/check-selection.sh
+#
+# Runs against a throwaway $HOME. No brew, no chezmoi, no network.
+
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+FAILURES=0
+
+if [[ -t 1 ]]; then
+  GREEN=$'\033[32m'; RED=$'\033[31m'; DIM=$'\033[2m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
+else
+  GREEN=""; RED=""; DIM=""; BOLD=""; RESET=""
+fi
+pass() { printf '  %spass%s  %-24s %s%s%s\n' "$GREEN" "$RESET" "$1" "$DIM" "${2:-}" "$RESET"; }
+fail() { printf '  %sFAIL%s  %-24s %s\n' "$RED" "$RESET" "$1" "${2:-}"; FAILURES=$((FAILURES + 1)); }
+
+printf '\n%soptional selection%s\n\n' "$BOLD" "$RESET"
+
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/check-selection.XXXXXX")"
+cleanup() { rm -rf "$TMP"; }
+trap cleanup EXIT
+
+export HOME="$TMP"
+export DOTFILES_ROOT="$ROOT"
+# shellcheck source=lib-selection.sh
+source "$ROOT/scripts/lib-selection.sh"
+
+selection_load_items
+if (( ITEM_N > 100 )) && (( CAT_N == 9 )); then
+  pass "manifest loads" "$ITEM_N items in $CAT_N categories"
+else
+  fail "manifest loads" "got $ITEM_N items in $CAT_N categories"
+fi
+
+selection_defaults
+if [[ "$(selection_selected_count)" == "5" ]] && sel_has config:opencode; then
+  pass "first-run defaults" "5 config toggles, no packages"
+else
+  fail "first-run defaults" "got $(selection_selected_count)"
+fi
+
+sel_del config:ghostty
+if ! sel_has config:ghostty && sel_has config:tmux; then
+  pass "toggle one config" "neighbours untouched"
+else
+  fail "toggle one config" "selection lost a neighbour"
+fi
+
+selection_enable brew:ffmpeg >/dev/null
+if selection_enable brew:ffmpeg-full; then
+  fail "conflict blocks" "ffmpeg-full was selected"
+else
+  pass "conflict blocks" "conflicts with $SELECTION_LAST_CONFLICT"
+fi
+
+selection_enable vscode:ms-python.python >/dev/null
+if sel_has cask:visual-studio-code; then
+  pass "requires cascades in" "VS Code added for its extension"
+else
+  fail "requires cascades in" "parent not selected"
+fi
+
+sel_del cask:visual-studio-code
+selection_prune_dependents
+if ! sel_has vscode:ms-python.python; then
+  pass "requires cascades out" "extension removed with its parent"
+else
+  fail "requires cascades out" "orphan extension remains"
+fi
+
+selection_render_ignore
+if grep -qx '.wezterm.lua' "$DOTFILES_IGNORE_FILE"; then
+  pass "ignore generation" "unchecked WezTerm config excluded"
+else
+  fail "ignore generation" "missing .wezterm.lua"
+fi
+
+mkdir -p "$HOME/.config/ghostty"
+printf 'stale\n' > "$HOME/.config/ghostty/config"
+REMOVED="$(selection_prune_paths)"
+if [[ "$REMOVED" == "1" ]] && [[ ! -e "$HOME/.config/ghostty/config" ]]; then
+  pass "prune" "deselected config removed"
+else
+  fail "prune" "expected 1 removal, got $REMOVED"
+fi
+
+if selection_validate >/dev/null; then
+  pass "validation" "dependencies and conflicts resolved"
+else
+  fail "validation" "selection is inconsistent"
+fi
+
+printf '\n'
+if (( FAILURES == 0 )); then
+  printf '%s%d failed%s\n\n' "$GREEN" "$FAILURES" "$RESET"; exit 0
+else
+  printf '%s%d failed%s\n\n' "$RED" "$FAILURES" "$RESET"; exit 1
+fi

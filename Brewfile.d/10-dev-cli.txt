@@ -1,0 +1,25 @@
+# name: Dev CLI
+config	opencode	paths=.config/opencode/opencode.jsonc,.config/opencode/cli.json
+brew	cmake
+brew	cocoapods
+brew	docker
+brew	fd
+brew	fzf
+brew	gh
+brew	go
+brew	hugo
+brew	jq
+brew	libffi
+brew	neovim
+brew	openssh
+brew	openssl@3
+brew	pkgconf
+brew	poppler
+brew	python@3.13
+brew	ripgrep
+brew	rust
+brew	tree
+brew	wget
+brew	xcodegen
+brew	zoxide
+npm	corepack

@@ -1,0 +1,11 @@
+# name: Security
+brew	gnupg
+brew	magic-wormhole
+brew	mkcert
+brew	pinentry-mac
+brew	ykman
+cask	cryptomator
+cask	gpg-suite
+cask	keepassxc
+cask	mullvad-vpn
+cask	protonvpn
