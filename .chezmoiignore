@@ -2,7 +2,6 @@
 README.md
 docs/
 scripts/
-.opencode/
 .scratch/
 .gitignore
 .chezmoiignore
@@ -15,6 +14,13 @@ GLOSSARY.md
 
 # Machine-local selection state and the files generated from it.
 .local/state/dotfiles/
+
+# Floating skill checkouts written by bootstrap.sh; the checkouts are not
+# managed files, and neither are the links or the migration backup.
+.local/share/dotfiles/
+.agents/skills/
+.agents/.skill-lock.json
+.agents/skills.pre-checkout-*/
 
 # OpenCode secrets and machine-local state never belong in git.
 # These are target paths, so they guard against a future `chezmoi add --recursive`.

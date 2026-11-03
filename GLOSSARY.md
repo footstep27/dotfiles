@@ -50,3 +50,23 @@ _Avoid_: dotfile
 **Repo-only file**:
 A file tracked here that chezmoi ignores — the README, `docs/`, `scripts/`, the manifests.
 _Avoid_: untracked file
+
+**Skill upstream**:
+A git repository that publishes one or more agent skills.
+_Avoid_: skill repo, plugin
+
+**Skill checkout**:
+The machine-local clone of a skill upstream, owned by bootstrap.
+_Avoid_: cache, install dir
+
+**Skill link**:
+A symlink in `~/.agents/skills` that points at one skill directory inside a skill checkout.
+_Avoid_: shortcut, mount
+
+**Floating checkout**:
+A checkout that bootstrap fast-forwards to its upstream default branch on every run.
+_Avoid_: latest, auto-update
+
+**Pinned checkout**:
+A checkout held at a commit recorded in this repository; Oh My Zsh, powerlevel10k, the tmux plugins and the yazi packages are pinned.
+_Avoid_: locked checkout, fixed version

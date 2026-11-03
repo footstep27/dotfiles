@@ -66,7 +66,7 @@
     <div class="diagram-container">
       <svg viewBox="0 0 960 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="repo-overview-dark-title repo-overview-dark-desc">
         <title id="repo-overview-dark-title">How dotfiles reaches your machine</title>
-        <desc id="repo-overview-dark-desc">Diagram showing edits landing in the chezmoi source repo, a sync step copying them into live configs under the home directory, and the terminal tools that read them, with a one-time bootstrap path.</desc>
+        <desc id="repo-overview-dark-desc">Diagram showing edits landing in the chezmoi source repo, a sync step copying them into live configs under the home directory, and the terminal tools that read them, with a bootstrap path that also installs agent skills.</desc>
         <defs>
           <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bfc0c0"/></marker>
           <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#f08a59"/></marker>
@@ -147,13 +147,13 @@
         <text x="870" y="228" fill="#f5f5f5" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">your apps</text>
         <text x="870" y="244" fill="#bfc0c0" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Ghostty · tmux</text>
 
-        <!-- Node: bootstrap.sh (input, one-time) -->
+        <!-- Node: bootstrap.sh (input, setup/update) -->
         <rect x="188" y="356" width="208" height="72" rx="6" fill="#2d3142"/>
         <rect x="188" y="356" width="208" height="72" rx="6" fill="rgba(191,192,192,0.10)" stroke="#949eb2" stroke-width="1"/>
         <rect x="196" y="364" width="40" height="12" rx="2" fill="transparent" stroke="rgba(142,140,131,0.40)" stroke-width="0.8"/>
         <text x="216" y="373" fill="#949eb2" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SCRIPT</text>
         <text x="292" y="396" fill="#f5f5f5" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">bootstrap.sh</text>
-        <text x="292" y="412" fill="#bfc0c0" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">brew · age · apply</text>
+        <text x="292" y="412" fill="#bfc0c0" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">brew · age · apply · skills</text>
 
         <!-- Legend -->
         <line x1="40" y1="536" x2="920" y2="536" stroke="rgba(245,245,245,0.12)" stroke-width="0.8"/>
@@ -161,7 +161,7 @@
         <line x1="120" y1="556" x2="144" y2="556" stroke="#bfc0c0" stroke-width="1.2"/>
         <text x="152" y="559" fill="#bfc0c0" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">daily sync</text>
         <line x1="330" y1="556" x2="354" y2="556" stroke="#bfc0c0" stroke-width="1" stroke-dasharray="4,3"/>
-        <text x="362" y="559" fill="#bfc0c0" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">one-time setup</text>
+        <text x="362" y="559" fill="#bfc0c0" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">bootstrap run</text>
         <line x1="560" y1="556" x2="584" y2="556" stroke="#f08a59" stroke-width="1.4"/>
         <text x="592" y="559" fill="#f08a59" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">focal step</text>
       </svg>

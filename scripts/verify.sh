@@ -21,6 +21,8 @@ STATIC=0
 DOTFILES_ROOT="$ROOT"
 # shellcheck source=lib-selection.sh
 source "$ROOT/scripts/lib-selection.sh"
+# shellcheck source=lib-skills.sh
+source "$ROOT/scripts/lib-skills.sh"
 
 for arg in "$@"; do
   case "$arg" in
@@ -193,7 +195,7 @@ else
   warn "optional tools" "absent (guarded, not required): ${OPTIONAL_ISSUES[*]}"
 fi
 
-# -------------------------------------------------- OpenCode and agent skills
+# ------------------------------------------------------------ OpenCode secrets
 # Secrets and machine-local state must never enter the source. These fail
 # instead of warn: a leak is never acceptable, even on an otherwise healthy
 # machine. The guard list lives in .chezmoiignore as well.
@@ -214,6 +216,81 @@ if command -v chezmoi >/dev/null 2>&1; then
   fi
 fi
 
+# ------------------------------------------------------------- agent skills
+# Skills are floating upstream checkouts linked into ~/.agents/skills, not
+# managed files. Missing or stale links warn so a machine bootstrapped offline
+# still counts as healthy; a missing target directory is fatal because no agent
+# can see any skill at all.
+if ! skills_load_upstreams; then
+  fail "skills manifest" "${SKILLS_CONF_ERRORS//$'\n'/; }"
+elif [[ ! -d "$SKILLS_TARGET_DIR" ]]; then
+  fail "agent skills" "missing $SKILLS_TARGET_DIR — run: $ROOT/bootstrap.sh"
+else
+  SKILL_LINK_ISSUES=(); CHECKOUT_ISSUES=(); MISSING_UPSTREAM=0; SKILL_TOTAL=0
+  EXPECTED=$'\n'
+  i=0
+  while (( i < UP_N )); do
+    repo="${UP_REPO[$i]}"
+    checkout="$(skills_checkout_dir "$repo")"
+    if [[ ! -d "$checkout/.git" ]]; then
+      CHECKOUT_ISSUES+=("$repo missing")
+      MISSING_UPSTREAM=1
+    elif [[ -n "$(git -C "$checkout" status --porcelain --untracked-files=no 2>/dev/null)" ]]; then
+      CHECKOUT_ISSUES+=("$repo dirty")
+    fi
+    while IFS= read -r source; do
+      [[ -n "$source" ]] || continue
+      SKILL_TOTAL=$((SKILL_TOTAL + 1))
+      skill_name="$(basename "$source")"
+      EXPECTED="$EXPECTED$skill_name"$'\n'
+      skill_link="$SKILLS_TARGET_DIR/$skill_name"
+      if [[ ! -L "$skill_link" ]] || [[ "$(readlink "$skill_link")" != "$source" ]]; then
+        SKILL_LINK_ISSUES+=("$skill_name")
+      fi
+    done < <(skills_skill_dirs "$repo" "${UP_INCLUDES[$i]}")
+    i=$((i + 1))
+  done
+
+  if (( MISSING_UPSTREAM )); then
+    warn "agent skills" "not every upstream is checked out — run: $ROOT/bootstrap.sh"
+  elif [[ ${#SKILL_LINK_ISSUES[@]} -eq 0 ]]; then
+    pass "agent skills" "$SKILL_TOTAL linked from $UP_N upstreams"
+  else
+    warn "agent skills" "missing or wrong link: ${SKILL_LINK_ISSUES[*]} — run: $ROOT/bootstrap.sh"
+  fi
+
+  if [[ ${#CHECKOUT_ISSUES[@]} -eq 0 ]]; then
+    pass "skill checkouts" "$UP_N clean"
+  else
+    warn "skill checkouts" "${CHECKOUT_ISSUES[*]}"
+  fi
+
+  DANGLING=(); STALE=()
+  for entry in "$SKILLS_TARGET_DIR"/*; do
+    [[ -L "$entry" ]] || continue
+    dest="$(readlink "$entry")"
+    case "$dest" in
+      "$SKILLS_UPSTREAM_DIR"/*)
+        skill_name="$(basename "$entry")"
+        if [[ ! -e "$dest" ]]; then
+          DANGLING+=("$skill_name")
+        elif (( ! MISSING_UPSTREAM )); then
+          case "$EXPECTED" in
+            *$'\n'"$skill_name"$'\n'*) ;;
+            *) STALE+=("$skill_name") ;;
+          esac
+        fi
+        ;;
+    esac
+  done
+  if [[ ${#DANGLING[@]} -eq 0 && ${#STALE[@]} -eq 0 ]]; then
+    pass "skill links" "no stray links"
+  else
+    [[ ${#DANGLING[@]} -gt 0 ]] && warn "skill links" "dangling: ${DANGLING[*]}"
+    [[ ${#STALE[@]} -gt 0 ]] && warn "skill links" "not declared: ${STALE[*]} — run: $ROOT/bootstrap.sh"
+  fi
+fi
+
 # ------------------------------------------------------- licensed assets guard
 # A commercial font must never be committed: it cannot be redistributed, and
 # `chezmoi add --recursive` is the command that would do it by accident. Check
@@ -224,6 +301,13 @@ if command -v git >/dev/null 2>&1 && [[ -d "$ROOT/.git" ]]; then
     pass "licensing" "no font binaries tracked"
   else
     fail "licensing" "font binary tracked: $(printf '%s' "$TRACKED_FONTS" | head -1)"
+  fi
+
+  TRACKED_SKILLS="$(git -C "$ROOT" ls-files dot_agents .opencode/skills 2>/dev/null || true)"
+  if [[ -z "$TRACKED_SKILLS" ]]; then
+    pass "skills unvendored" "no skill trees tracked"
+  else
+    fail "skills unvendored" "vendored copy tracked: $(printf '%s' "$TRACKED_SKILLS" | head -1)"
   fi
 else
   warn "licensing" "skipped, not a git checkout"
@@ -385,13 +469,6 @@ if command -v chezmoi >/dev/null 2>&1; then
     pass "opencode config" "cli.json parses"
   else
     fail "opencode config" "~/.config/opencode/cli.json missing or invalid"
-  fi
-
-  SKILLS="$(find "$HOME/.agents/skills" -name SKILL.md 2>/dev/null | wc -l | tr -d ' ')"
-  if [[ "$SKILLS" -gt 0 ]]; then
-    pass "agent skills" "$SKILLS global skills"
-  else
-    warn "agent skills" "none in ~/.agents/skills — run chezmoi apply"
   fi
 fi
 

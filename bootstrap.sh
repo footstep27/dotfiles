@@ -10,9 +10,10 @@
 #
 # Idempotent: safe to re-run after a partial failure or to pick up updates.
 # Order matters — Command Line Tools → brew → optional inventory → required
-# packages → optional packages → chezmoi/age → apply → shell framework → tmux
-# plugins → yazi packages → verify — because chezmoi must write the configs
-# before anything reads them.
+# packages → optional packages → chezmoi/age → apply → agent skills → shell
+# framework → tmux plugins → yazi packages → verify — because chezmoi must write
+# the configs before anything reads them, and skills are linked into $HOME
+# rather than managed by chezmoi.
 
 set -euo pipefail
 
@@ -50,6 +51,8 @@ fi
 DOTFILES_ROOT="$ROOT"
 # shellcheck source=scripts/lib-selection.sh
 source "$ROOT/scripts/lib-selection.sh"
+# shellcheck source=scripts/lib-skills.sh
+source "$ROOT/scripts/lib-skills.sh"
 
 if [[ -t 1 ]]; then
   BOLD=$'\033[1m'; DIM=$'\033[2m'; RED=$'\033[31m'; GREEN=$'\033[32m'
@@ -279,7 +282,25 @@ else
   chezmoi apply --verbose 2>&1 | sed 's/^/    /'
 fi
 
-# ---------------------------------------------------------------- 9. Prune
+# ------------------------------------------------------- 9. Agent skills
+# Skills are not vendored: each upstream is a floating checkout updated on
+# every run, and ~/.agents/skills holds symlinks into those checkouts. Dirty
+# checkouts, duplicate names and network failures warn instead of aborting;
+# re-running this script is the update path.
+step "Agent skills"
+if (( DRY_RUN )); then
+  skills_install 1 || true
+else
+  skills_install 0 || true
+fi
+if [[ -n "$SKILLS_REPORT" ]]; then
+  while IFS=$'\t' read -r level message; do
+    [[ -z "$level" ]] && continue
+    if [[ "$level" == "warn" ]]; then warn "$message"; else info "$message"; fi
+  done <<< "$SKILLS_REPORT"
+fi
+
+# ---------------------------------------------------------------- 10. Prune
 if (( PRUNE )); then
   step "Prune deselected configs"
   if (( DRY_RUN )); then
@@ -290,7 +311,7 @@ if (( PRUNE )); then
   fi
 fi
 
-# --------------------------------------------------- 10. Shell framework
+# --------------------------------------------------- 11. Shell framework
 # Oh My Zsh publishes no tags, so both pins are commit SHAs: the pair this
 # machine runs today. Moving either is a deliberate edit, not a side effect of
 # the day the machine was built.
@@ -351,7 +372,7 @@ else
     "$P10K_PIN" "powerlevel10k" || true
 fi
 
-# ------------------------------------------------- 11. Ghostty terminfo
+# ------------------------------------------------- 12. Ghostty terminfo
 # Ghostty keeps its terminfo inside the app bundle, where ncurses will not look.
 # tmux (and anything over ssh) needs TERM=xterm-ghostty to be resolvable, so the
 # bundled entries are copied into the standard per-user location.
@@ -384,7 +405,7 @@ else
   warn "Ghostty bundle not found — skipping terminfo"
 fi
 
-# ------------------------------------------------------- 12. tmux plugins
+# ------------------------------------------------------- 13. tmux plugins
 # TPM installs missing plugins but never checks out the ref declared after '#',
 # so the pins are applied explicitly here.
 step "tmux plugins"
@@ -419,7 +440,7 @@ else
   info "plugins: $(ls "$HOME/.tmux/plugins" | tr '\n' ' ')"
 fi
 
-# ------------------------------------------------------- 13. yazi packages
+# ------------------------------------------------------- 14. yazi packages
 # Flavors and plugins are not vendored; package.toml pins them and `ya`
 # installs the exact refs recorded there.
 step "yazi packages"
@@ -434,7 +455,7 @@ else
   warn "ya not found — skipping yazi packages"
 fi
 
-# --------------------------------------------------------------- 14. Verify
+# --------------------------------------------------------------- 15. Verify
 step "Verify"
 if [[ -x "$ROOT/scripts/verify.sh" ]]; then
   if (( DRY_RUN )); then

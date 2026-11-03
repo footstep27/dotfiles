@@ -2,7 +2,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/repo-overview-dark.svg">
-  <img src="docs/diagrams/repo-overview.svg" alt="Architecture: edits go into the dotfiles repo, chezmoi apply copies them into live configs under the home directory, and the terminal apps read them. A dashed path shows bootstrap.sh as the one-time setup for a new machine." width="960">
+  <img src="docs/diagrams/repo-overview.svg" alt="Architecture: edits go into the dotfiles repo, chezmoi apply copies them into live configs under the home directory, and the terminal apps read them. A dashed path shows bootstrap.sh as the setup path, which also installs agent skills." width="960">
 </picture>
 
 Personal macOS setup as code: Ghostty, zsh + powerlevel10k, tmux, WezTerm, yazi, btop, git,
@@ -110,17 +110,18 @@ chezmoi add --encrypt ~/.secret     # age-encrypted source file
 Rules for this repo:
 
 - Anything that should land in `$HOME` belongs in the source tree as `dot_*` / `dot_config/…`.
-- Anything repo-only (docs, scripts, project skills, manifests) must be listed in
-  `.chezmoiignore` — `docs/`, `scripts/`, `.opencode/`, `README.md`, `Brewfile`, and
-  `Brewfile.d/` already are.
+- Anything repo-only (docs, scripts, manifests) must be listed in `.chezmoiignore` —
+  `docs/`, `scripts/`, `README.md`, `Brewfile`, and `Brewfile.d/` already are.
 - Prefer `--secrets error` when adding files. `verify.sh` also fails if a known secret or
   state path becomes managed.
 - Encryption is wired (age) but idle. Back up `~/.config/chezmoi/key.txt` before the first
   secret depends on it; a new machine cannot decrypt without it.
 
-Global agent skills are installed and updated by the skills CLI, which writes
-`~/.agents/skills` and `.skill-lock.json`. Both are managed here, so after adding or updating
-skills run `chezmoi re-add ~/.agents`, review, commit, and push.
+Agent skills are not vendored. `scripts/skills.conf` names the upstreams; `bootstrap.sh`
+clones them under `~/.local/share/dotfiles/upstreams/` and links every skill into
+`~/.agents/skills`. Re-running `./bootstrap.sh` is the update path; add another upstream by
+adding one line to `scripts/skills.conf`. The checkouts, the links, the migration backup and
+the old lockfile are excluded from chezmoi in `.chezmoiignore`.
 
 ## New machine
 
@@ -147,7 +148,8 @@ so `--select` is the command to revisit it.
 `bootstrap.sh` is idempotent and runs, in order: Command Line Tools pre-flight → Homebrew
 (installing it if absent) → optional inventory → `Brewfile` → selected optional packages →
 chezmoi source wiring (including the age recipient) → archive of managed dotfiles when any
-drifted → `chezmoi apply` → Oh My Zsh and powerlevel10k at their pinned commits → Ghostty
+drifted → `chezmoi apply` → agent skills cloned from their upstreams and linked into
+`~/.agents/skills` → Oh My Zsh and powerlevel10k at their pinned commits → Ghostty
 terminfo → tmux plugins at their pinned refs → yazi packages → `scripts/verify.sh`.
 
 The selection file is machine state, never repository content. Deselecting an item only skips
@@ -169,17 +171,18 @@ The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore i
 | Fonts | Maple Mono NF, installed from the required `Brewfile` — nothing manual |
 | Git | global `.gitconfig` |
 | OpenCode | `~/.config/opencode/cli.json` (theme, diffs, session UI) and `opencode.jsonc` (global config) |
-| Agent skills | global `~/.agents/skills` + `.skill-lock.json`; the project skill lives in `.opencode/skills/diagram-design/` (repo-only) |
+| Agent skills | not chezmoi-managed: bootstrap clones the `scripts/skills.conf` upstreams and links them into `~/.agents/skills`, updating on every run |
 | Packages | `Brewfile` (required), `Brewfile.d/` (optional categories, selected per machine) |
 
 Deliberately **not** managed: credentials (GPG keys, `gh`), OpenCode secrets and state
 (`~/.local/share/opencode/auth.json`, both `service.json` files, `opencode.db*`, plugin
 `node_modules`), nvim config, shell histories, Oh My Zsh (Homebrew-vendored), tmux plugin
 trees, the WezTerm theme repository clone, `yazi` flavors/plugins (declared in
-`package.toml` and restored with `ya pkg install`).
+`package.toml` and restored with `ya pkg install`), and the floating skill checkouts, links
+and migration backup that `bootstrap.sh` owns under `~/.local/share/dotfiles/` and `~/.agents/`.
 
-Those OpenCode paths are listed in `.chezmoiignore` as guards, and `verify.sh` fails if any of
-them ever ends up in the source.
+Those OpenCode and skill paths are listed in `.chezmoiignore` as guards, and `verify.sh` fails
+if any of them ever ends up in the source.
 
 `~/.vim` contains only netrw's history file, so it stays unmanaged. If it ever gets real
 config, `chezmoi add` it.
@@ -187,9 +190,9 @@ config, `chezmoi add` it.
 ## What a fresh machine gets
 
 `./bootstrap.sh` installs the required Homebrew set, installs the optional packages you
-checked, copies the selected configs into `$HOME`, then installs tmux plugins and yazi
-packages from their own upstreams. Optional packages are not installed unless selected; the
-required baseline is never optional.
+checked, copies the selected configs into `$HOME`, then clones the agent-skill upstreams and
+installs tmux plugins and yazi packages from their own upstreams. Optional packages are not
+installed unless selected; the required baseline is never optional.
 
 ### Packages
 
@@ -250,7 +253,7 @@ floating checkout would make two machines differ for no reason:
 | `.config/yazi/` | File-manager layout, mime-based openers, preview tasks, Vim-style keymap, theme selection. |
 | `.config/opencode/` | `cli.json` for theme, diff wrapping and session UI; `opencode.jsonc` as the global config stub. |
 | `.gitconfig` | Commit identity, delta pager, `diff3` merge conflicts, coloured moved lines, no signing, no editor. |
-| `.agents/` | 27 pinned agent skills plus `.skill-lock.json`, which records each upstream and content hash. |
+| `.agents/skills/` | Symlinks into the upstream checkouts; the set follows `scripts/skills.conf` and updates on every bootstrap. |
 
 ### Deliberately not installed
 
@@ -266,7 +269,7 @@ developer toolchain a given machine may not need, or the full app inventory.
 
 ```sh
 ./scripts/verify.sh            # the applied machine: apps, pty, tmux, fonts
-./scripts/verify.sh --static   # repo-side only: manifest, dependencies, pins
+./scripts/verify.sh --static   # repo-side only: manifest, dependencies, pins, skill links
 ./scripts/check-bare-shell.sh  # simulated bare Mac: no Rust, nvm, Docker, Herd
 ./scripts/check-selection.sh   # inventory parser, conflicts, cascades, prune
 ```
@@ -307,6 +310,7 @@ to download by hand.
 | `xterm-ghostty` unknown over ssh | Rerun `./bootstrap.sh` (copies the bundled terminfo) and check with `infocmp -x xterm-ghostty`. |
 | `sourceDir` points at another checkout | Fix `~/.config/chezmoi/chezmoi.toml` so it names this repo, or rerun `bootstrap.sh`. |
 | tmux plugins missing | `bash ~/.tmux/plugins/tpm/bin/install_plugins`, or rerun `./bootstrap.sh`. |
+| Skills missing or stale | Rerun `./bootstrap.sh`. A checkout with local edits is skipped on purpose; inspect it with `git -C ~/.local/share/dotfiles/upstreams/<owner>/<repo> status`. |
 | Want to see the plan first | `chezmoi apply --dry-run --verbose` |
 
 ## Layout
@@ -321,22 +325,22 @@ scripts/check-selection.sh  inventory parser, conflicts, cascades, prune
 GLOSSARY.md             terms: bare Mac, applied machine, selection, required baseline
 Brewfile                required packages
 Brewfile.d/             optional categories, one editable manifest per group
+scripts/skills.conf      agent-skill upstreams, checked out by bootstrap
 dot_* / dot_config/     chezmoi-managed configs (names map to $HOME)
-dot_agents/             global agent skills + lockfile (chezmoi-managed)
 dot_tmux.conf           tmux, including pinned plugin refs
-.opencode/skills/       project skill, repo-only (chezmoi-ignored)
 docs/                   fonts, themes, decisions, diagram sources
 ```
 
 `~/.local/state/dotfiles/` is not part of the repo: it holds the saved `selection`, the
 generated `Brewfile.selected`, and the generated `ignored-paths` list that `.chezmoiignore`
-reads.
+reads. `~/.local/share/dotfiles/upstreams/` is machine state too: it holds the floating skill
+checkouts that `~/.agents/skills` links into.
 
 The README diagram is generated, not hand-drawn: edit `docs/diagrams/repo-overview.html`
 (and `-dark.html`), then re-export with the diagram-design skill:
 
 ```sh
-python3 .opencode/skills/diagram-design/scripts/export_svg.py \
+python3 ~/.agents/skills/diagram-design/scripts/export_svg.py \
   docs/diagrams/repo-overview.html docs/diagrams/repo-overview.svg --system-fonts
 ```
 
@@ -366,11 +370,16 @@ python3 .opencode/skills/diagram-design/scripts/export_svg.py \
   [`docs/adr/0004-free-nerd-font-replaces-monolisa.md`](docs/adr/0004-free-nerd-font-replaces-monolisa.md).
 - **`tmux-cpu` is pinned to a commit, not a tag** — the only plugin whose upstream publishes
   no tags (`#bcb110d`).
+- **Agent skills float, everything else is pinned.** Skills change often and are meant to be
+  editable, so bootstrap fast-forwards them on every run and symlinks them into
+  `~/.agents/skills` instead of committing copies: see
+  [`docs/adr/0006-agent-skills-from-floating-checkouts.md`](docs/adr/0006-agent-skills-from-floating-checkouts.md).
 - **`core.editor` is deliberately unset.** Interactive committing goes through `lazygit`.
 
 ## Licence
 
-MIT — see [`LICENSE`](LICENSE). Third-party material keeps its own terms: the vendored agent
-skills, Catppuccin themes and Tabler icons are MIT with attribution collected in
-[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). Maple Mono NF is OFL 1.1 and is installed
+MIT — see [`LICENSE`](LICENSE). Third-party material keeps its own terms: Catppuccin themes
+are MIT with attribution collected in
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). Agent skills are installed from their
+upstreams at setup time, not redistributed here. Maple Mono NF is OFL 1.1 and is installed
 from Homebrew rather than redistributed here; see [`docs/fonts.md`](docs/fonts.md).
