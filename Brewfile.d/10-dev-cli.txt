@@ -6,6 +6,7 @@ brew	docker		Command-line Docker client and container tooling.
 brew	fd		Fast, user-friendly alternative to find.
 brew	fzf		Fuzzy finder for files, command history and piped lists.
 brew	gh		GitHub's official command-line client.
+brew	glab		GitLab's official command-line client.
 brew	go		Go programming language toolchain.
 brew	hugo		Fast static site generator written in Go.
 brew	jq		Command-line JSON processor and pretty-printer.
