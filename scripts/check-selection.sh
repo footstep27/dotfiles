@@ -30,7 +30,7 @@ export DOTFILES_ROOT="$ROOT"
 source "$ROOT/scripts/lib-selection.sh"
 
 selection_load_items
-if (( ITEM_N > 100 )) && (( CAT_N == 9 )); then
+if (( ITEM_N > 100 )) && (( CAT_N == 10 )); then
   pass "manifest loads" "$ITEM_N items in $CAT_N categories"
 else
   fail "manifest loads" "got $ITEM_N items in $CAT_N categories"
@@ -53,6 +53,12 @@ if [[ "$(selection_selected_count)" == "5" ]] && sel_has config:opencode; then
   pass "first-run defaults" "5 config toggles, no packages"
 else
   fail "first-run defaults" "got $(selection_selected_count)"
+fi
+
+if item_index macos:keyboard >/dev/null 2>&1 && ! sel_has macos:keyboard; then
+  pass "macos toggles" "present and default off"
+else
+  fail "macos toggles" "missing or selected by default"
 fi
 
 sel_del config:ghostty

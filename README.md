@@ -123,6 +123,10 @@ clones them under `~/.local/share/dotfiles/upstreams/` and links every skill int
 adding one line to `scripts/skills.conf`. The checkouts, the links, the migration backup and
 the old lockfile are excluded from chezmoi in `.chezmoiignore`.
 
+macOS preferences are not managed files either. Add or change a key in
+`scripts/macos-defaults.tsv` (group, domain, key, type, value), then select the group with
+`./bootstrap.sh --select`. Keep entries reversible and avoid sudo, Gatekeeper and FileVault.
+
 ## New machine
 
 A bare Mac has no `git`, no compiler and therefore no Homebrew, so the first two steps stay
@@ -138,21 +142,21 @@ cd ~/Repositories/dotfiles
 
 HTTPS on purpose: a bare machine has no SSH key yet.
 
-On the first interactive run, a single checklist opens: eight categories of optional software
-plus config toggles for the required tools. Each row carries a one-sentence description, and
-`/` matches against names and descriptions. `space` toggles, `a`/`n` select or clear a
+On the first interactive run, a single checklist opens: categories of optional software plus
+config and macOS toggles for the required tools. Each row carries a one-sentence description,
+and `/` matches against names and descriptions. `space` toggles, `a`/`n` select or clear a
 category, `A`/`N` do the same for everything, and `enter` saves. Optional
-packages start unchecked; required packages are locked. Later runs reuse the saved selection,
-so `--select` is the command to revisit it. When a manifest gains items, bootstrap warns that
-the inventory changed and points at `--select`.
+packages and macOS groups start unchecked; required packages are locked. Later runs reuse the
+saved selection, so `--select` is the command to revisit it. When a manifest gains items,
+bootstrap warns that the inventory changed and points at `--select`.
 
 `bootstrap.sh` is idempotent and runs, in order: Command Line Tools pre-flight → Homebrew
 (installing it if absent) → optional inventory → `Brewfile` → selected optional packages →
 chezmoi source wiring (including the age recipient) → archive of managed dotfiles when any
-drifted → `chezmoi apply` (forced, because the archive preserved the live copies) → agent
-skills cloned from their upstreams and linked into `~/.agents/skills` → Oh My Zsh and
-powerlevel10k at their pinned commits → Ghostty terminfo → tmux plugins at their pinned refs
-→ yazi packages → `scripts/verify.sh`.
+drifted → `chezmoi apply` (forced, because the archive preserved the live copies) → selected
+macOS preference groups applied with `defaults` → agent skills cloned from their upstreams and
+linked into `~/.agents/skills` → Oh My Zsh and powerlevel10k at their pinned commits → Ghostty
+terminfo → tmux plugins at their pinned refs → yazi packages → `scripts/verify.sh`.
 
 The selection file is machine state, never repository content. Deselecting an item only skips
 its installation; it never uninstalls anything. To remove a config that is no longer selected,
@@ -173,6 +177,7 @@ The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore i
 | Fonts | Maple Mono NF, installed from the required `Brewfile` — nothing manual |
 | Git | global `.gitconfig` |
 | OpenCode | `~/.config/opencode/cli.json` (theme, diffs, session UI) and `opencode.jsonc` (global config) |
+| macOS preferences | optional `macos:*` groups applied by bootstrap with `defaults`; not files, not chezmoi-managed |
 | Agent skills | not chezmoi-managed: bootstrap clones the `scripts/skills.conf` upstreams and links them into `~/.agents/skills`, updating on every run |
 | Packages | `Brewfile` (required), `Brewfile.d/` (optional categories, selected per machine) |
 
@@ -180,8 +185,9 @@ Deliberately **not** managed: credentials (GPG keys, `gh`), OpenCode secrets and
 (`~/.local/share/opencode/auth.json`, both `service.json` files, `opencode.db*`, plugin
 `node_modules`), nvim config, shell histories, Oh My Zsh (Homebrew-vendored), tmux plugin
 trees, the WezTerm theme repository clone, `yazi` flavors/plugins (declared in
-`package.toml` and restored with `ya pkg install`), and the floating skill checkouts, links
-and migration backup that `bootstrap.sh` owns under `~/.local/share/dotfiles/` and `~/.agents/`.
+`package.toml` and restored with `ya pkg install`), the floating skill checkouts, links
+and migration backup that `bootstrap.sh` owns under `~/.local/share/dotfiles/` and `~/.agents/`,
+and the macOS before-values used by `--revert-macos`.
 
 Those OpenCode and skill paths are listed in `.chezmoiignore` as guards, and `verify.sh` fails
 if any of them ever ends up in the source.
@@ -192,9 +198,10 @@ config, `chezmoi add` it.
 ## What a fresh machine gets
 
 `./bootstrap.sh` installs the required Homebrew set, installs the optional packages you
-checked, copies the selected configs into `$HOME`, then clones the agent-skill upstreams and
-installs tmux plugins and yazi packages from their own upstreams. Optional packages are not
-installed unless selected; the required baseline is never optional.
+checked, copies the selected configs into `$HOME`, applies the selected macOS preference
+groups, then clones the agent-skill upstreams and installs tmux plugins and yazi packages from
+their own upstreams. Optional packages are not installed unless selected; the required
+baseline is never optional.
 
 ### Packages
 
@@ -243,6 +250,23 @@ runtime loader; its installer is not used.
 | **yazi: my-commands** | Personal command menu bound to `F2`; vendored in this repo because it has no upstream. |
 | **yazi flavors** | `catppuccin-macchiato` (active), `catppuccin-mocha`, `dracula` and `ayu-dark`, switchable in `theme.toml`. |
 
+### macOS preference groups
+
+Optional, selected per machine with `./bootstrap.sh --select`. Each group is
+applied with `defaults` after `chezmoi apply`; `verify.sh` warns when a selected
+group drifts. `./bootstrap.sh --revert-macos` restores the values recorded
+before the first change and exits without running the rest of the bootstrap.
+
+| Group | What it sets |
+|---|---|
+| `macos:keyboard` | Fast key repeat, repeat instead of the accent popup, no autocorrect or smart substitutions, full keyboard access. |
+| `macos:finder` | Show all extensions, path and status bars, folders first, current-folder search, expanded save and print panels, no `.DS_Store` on network or USB volumes. |
+| `macos:screenshots` | `~/Pictures/Screenshots`, PNG, no shadow, no floating thumbnail. |
+| `macos:apps` | TextEdit plain text and UTF-8, Activity Monitor all processes, Disk Utility debug options, Safari Develop menu, Terminal secure keyboard entry. |
+
+The definitions live in `scripts/macos-defaults.tsv`. Deselecting a group later
+stops future application but does not undo what is already set.
+
 ### Settings written into `$HOME`
 
 | Target | What it sets |
@@ -275,9 +299,10 @@ developer toolchain a given machine may not need, or the full app inventory.
 
 ```sh
 ./scripts/verify.sh            # the applied machine: apps, pty, tmux, fonts
-./scripts/verify.sh --static   # repo-side only: manifest, dependencies, pins, skill links
+./scripts/verify.sh --static   # repo-side only: manifests, dependencies, pins, links, defaults
 ./scripts/check-bare-shell.sh  # simulated bare Mac: no Rust, nvm, Docker, Herd
 ./scripts/check-selection.sh   # inventory parser, conflicts, cascades, prune
+./scripts/check-macos-defaults.sh  # manifest, typed diff, apply, before-values, revert
 ```
 
 `verify.sh` prints one row per check, `pass` / `warn` / `FAIL`, and exits non-zero only on
@@ -286,9 +311,10 @@ faces resolve, zsh loads cleanly through a pty, tmux starts with every plugin at
 ref, and the required tools are actually on `PATH`. Missing requirements fail; absent
 optional toolchains warn. The machine is also judged against its own selection: checked
 optional packages and configs must be present, unchecked ones are ignored, and a config left
-behind by an old selection warns until `--prune` removes it. Two checks are about the repo
-rather than the machine: one fails if a font binary becomes tracked, the other if a managed
-config contains something secret-shaped.
+behind by an old selection warns until `--prune` removes it. Selected macOS groups are read
+back; drift warns because preferences are not required infrastructure. Two checks are about the
+repo rather than the machine: one fails if a font binary becomes tracked, the other if a
+managed config contains something secret-shaped.
 
 `--static` skips everything that needs Ghostty, a pty or a tmux server, which makes it the
 mode to run on a machine that has just finished bootstrapping.
@@ -303,9 +329,12 @@ any error reaches the terminal. It is the proof that the shell degrades instead 
 1. **Default terminal app.** macOS has no dependable CLI for this. Set Ghostty as the default
    in System Settings (or via Finder's "Open With"). iTerm2 and WezTerm are optional inventory
    items if you want fallbacks.
+2. **Choose macOS preference groups.** They are opt-in. Run `./bootstrap.sh --select` and check
+   the `macOS` category; `./bootstrap.sh --revert-macos` undoes what bootstrap applied. Some
+   app defaults, such as Safari’s, only take effect after relaunch.
 
-That is the complete list. The fonts are installed from the `Brewfile`, so there is nothing
-to download by hand.
+Those are the only manual steps. The fonts are installed from the `Brewfile`, so there is
+nothing to download by hand.
 
 ## Troubleshooting
 
@@ -318,17 +347,21 @@ to download by hand.
 | tmux plugins missing | Rerun `./bootstrap.sh`; it installs every pinned plugin directly. TPM's own installer cannot resolve a raw commit pin. |
 | Skills missing or stale | Rerun `./bootstrap.sh`. A checkout with local edits is skipped on purpose; inspect it with `git -C ~/.local/share/dotfiles/upstreams/<owner>/<repo> status`. |
 | `~/.profile` changes after apply | Docker Desktop rewrites its PATH block with an absolute home path. Bootstrap archives drift and forces the repo version; rerun `./bootstrap.sh` after Docker touches it. |
+| macOS defaults drifted | Rerun `./bootstrap.sh` to reapply the selected groups, or `./bootstrap.sh --revert-macos` to undo them. |
 | Want to see the plan first | `chezmoi apply --dry-run --verbose` |
 
 ## Layout
 
 ```
-bootstrap.sh            fresh-machine entry point (--select, --dry-run, --prune)
+bootstrap.sh            fresh-machine entry point (--select, --dry-run, --prune, --revert-macos)
 scripts/select.sh       pure-Bash optional inventory checklist
 scripts/lib-selection.sh  manifest parser, selection model, generators
+scripts/macos-defaults.tsv  optional macOS preference groups (group, domain, key, type, value)
+scripts/lib-macos.sh    defaults diff, apply, before-values, revert and verification
 scripts/verify.sh       behaviour checks for the applied machine
 scripts/check-bare-shell.sh  simulated bare Mac: the shell must start clean
 scripts/check-selection.sh  inventory parser, conflicts, cascades, prune
+scripts/check-macos-defaults.sh  defaults manifest, apply, idempotence, revert
 GLOSSARY.md             terms: bare Mac, applied machine, selection, required baseline
 Brewfile                required packages
 Brewfile.d/             optional categories, one editable manifest per group
@@ -339,9 +372,10 @@ docs/                   fonts, themes, decisions, diagram sources
 ```
 
 `~/.local/state/dotfiles/` is not part of the repo: it holds the saved `selection`, the
-inventory snapshot used to spot new items, the generated `Brewfile.selected`, and the
-generated `ignored-paths` list that `.chezmoiignore` reads. `~/.local/share/dotfiles/upstreams/`
-is machine state too: it holds the floating skill checkouts that `~/.agents/skills` links into.
+inventory snapshot used to spot new items, the generated `Brewfile.selected`, the generated
+`ignored-paths` list that `.chezmoiignore` reads, and the macOS before-values used by
+`--revert-macos`. `~/.local/share/dotfiles/upstreams/` is machine state too: it holds the
+floating skill checkouts that `~/.agents/skills` links into.
 
 The README diagram is generated, not hand-drawn: edit `docs/diagrams/repo-overview.html`
 (and `-dark.html`), then re-export with the diagram-design skill:
@@ -381,6 +415,9 @@ python3 ~/.agents/skills/diagram-design/scripts/export_svg.py \
   editable, so bootstrap fast-forwards them on every run and symlinks them into
   `~/.agents/skills` instead of committing copies: see
   [`docs/adr/0006-agent-skills-from-floating-checkouts.md`](docs/adr/0006-agent-skills-from-floating-checkouts.md).
+- **macOS preferences are inventory groups, not managed files.** They are applied with
+  `defaults` only when selected, verified with warnings, and reversible per key: see
+  [`docs/adr/0007-macos-defaults-as-inventory-groups.md`](docs/adr/0007-macos-defaults-as-inventory-groups.md).
 - **`core.editor` is deliberately unset.** Interactive committing goes through `lazygit`.
 
 ## Licence

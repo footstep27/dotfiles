@@ -70,6 +70,7 @@ item_text() { # index
   local i="$1"
   case "${ITEM_KIND[$i]}" in
     config) printf '%s config' "${ITEM_NAME[$i]}" ;;
+    macos)  printf '%s macOS' "${ITEM_NAME[$i]}" ;;
     *)      printf '%s' "${ITEM_NAME[$i]}" ;;
   esac
 }

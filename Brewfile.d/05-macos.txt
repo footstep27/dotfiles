@@ -1,0 +1,8 @@
+# name: macOS
+# Optional groups of user-level defaults applied after chezmoi. Each row is a
+# `macos` item; the selection stores the checked group. These are not files,
+# packages or chezmoi-managed configs.
+macos	keyboard		Fast key repeat, repeat instead of accent popup, no autocorrect or smart substitutions.
+macos	finder		Show extensions, path and status bars, folders first, current-folder search and no .DS_Store on external volumes.
+macos	screenshots		Save to ~/Pictures/Screenshots as PNG without shadows or the floating thumbnail.
+macos	apps		TextEdit plain text, Activity Monitor details, Disk Utility debug options, Safari Develop menu and Terminal secure keyboard entry.

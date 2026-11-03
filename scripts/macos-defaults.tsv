@@ -1,0 +1,57 @@
+# macOS preference groups applied by bootstrap.sh.
+#
+# One row per key: group<TAB>domain<TAB>key<TAB>type<TAB>value
+# Types are bool, int, float and string. `$HOME` in a value is expanded.
+# A group is applied only when its `macos:<group>` item is selected.
+#
+# Keep this list small and reversible: --revert-macos restores the value
+# recorded before the first change. Settings that need sudo, change security
+# posture, or depend on optional hardware do not belong here.
+
+# Keyboard and text input
+keyboard	NSGlobalDomain	KeyRepeat	int	2
+keyboard	NSGlobalDomain	InitialKeyRepeat	int	15
+keyboard	NSGlobalDomain	ApplePressAndHoldEnabled	bool	false
+keyboard	NSGlobalDomain	NSAutomaticCapitalizationEnabled	bool	false
+keyboard	NSGlobalDomain	NSAutomaticSpellingCorrectionEnabled	bool	false
+keyboard	NSGlobalDomain	NSAutomaticQuoteSubstitutionEnabled	bool	false
+keyboard	NSGlobalDomain	NSAutomaticDashSubstitutionEnabled	bool	false
+keyboard	NSGlobalDomain	NSAutomaticPeriodSubstitutionEnabled	bool	false
+keyboard	NSGlobalDomain	AppleKeyboardUIMode	int	3
+
+# Finder and file dialogs
+finder	NSGlobalDomain	AppleShowAllExtensions	bool	true
+finder	com.apple.finder	ShowPathbar	bool	true
+finder	com.apple.finder	ShowStatusBar	bool	true
+finder	com.apple.finder	_FXSortFoldersFirst	bool	true
+finder	com.apple.finder	FXDefaultSearchScope	string	SCcf
+finder	com.apple.finder	FXEnableExtensionChangeWarning	bool	false
+finder	NSGlobalDomain	NSNavPanelExpandedStateForSaveMode	bool	true
+finder	NSGlobalDomain	NSNavPanelExpandedStateForSaveMode2	bool	true
+finder	NSGlobalDomain	PMPrintingExpandedStateForPrint	bool	true
+finder	NSGlobalDomain	PMPrintingExpandedStateForPrint2	bool	true
+finder	NSGlobalDomain	NSDocumentSaveNewDocumentsToCloud	bool	false
+finder	com.apple.desktopservices	DSDontWriteNetworkStores	bool	true
+finder	com.apple.desktopservices	DSDontWriteUSBStores	bool	true
+
+# Screenshots
+screenshots	com.apple.screencapture	location	string	$HOME/Pictures/Screenshots
+screenshots	com.apple.screencapture	type	string	png
+screenshots	com.apple.screencapture	disable-shadow	bool	true
+screenshots	com.apple.screencapture	show-thumbnail	bool	false
+
+# App defaults
+apps	com.apple.TextEdit	RichText	int	0
+apps	com.apple.TextEdit	PlainTextEncoding	int	4
+apps	com.apple.TextEdit	PlainTextEncodingForWrite	int	4
+apps	com.apple.ActivityMonitor	ShowCategory	int	0
+apps	com.apple.ActivityMonitor	UpdatePeriod	int	2
+apps	com.apple.ActivityMonitor	SortColumn	string	CPUUsage
+apps	com.apple.ActivityMonitor	SortDirection	int	0
+apps	com.apple.DiskUtility	DUDebugMenuEnabled	bool	true
+apps	com.apple.DiskUtility	advanced-image-options	bool	true
+apps	com.apple.Safari	IncludeDevelopMenu	bool	true
+apps	com.apple.Safari	WebKitDeveloperExtrasEnabledPreferenceKey	bool	true
+apps	com.apple.Safari	com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled	bool	true
+apps	com.apple.Safari	ShowFullURLInSmartSearchField	bool	true
+apps	com.apple.Terminal	SecureKeyboardEntry	bool	true

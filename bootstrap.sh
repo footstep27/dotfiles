@@ -6,14 +6,15 @@
 #   ./bootstrap.sh --all-optional      # select every non-conflicting optional item
 #   ./bootstrap.sh --reset-selection   # forget the saved selection
 #   ./bootstrap.sh --prune             # delete configs the selection excludes
+#   ./bootstrap.sh --revert-macos      # undo the macOS defaults bootstrap applied
 #   ./bootstrap.sh --dry-run           # show the plan, change nothing
 #
 # Idempotent: safe to re-run after a partial failure or to pick up updates.
 # Order matters — Command Line Tools → brew → optional inventory → required
-# packages → optional packages → chezmoi/age → apply → agent skills → shell
-# framework → tmux plugins → yazi packages → verify — because chezmoi must write
-# the configs before anything reads them, and skills are linked into $HOME
-# rather than managed by chezmoi.
+# packages → optional packages → chezmoi/age → apply → macOS defaults → agent
+# skills → shell framework → tmux plugins → yazi packages → verify — because
+# chezmoi must write the configs before anything reads them, and skills are
+# linked into $HOME rather than managed by chezmoi.
 
 set -euo pipefail
 
@@ -23,6 +24,7 @@ DO_SELECT=0
 ALL_OPTIONAL=0
 RESET_SELECTION=0
 PRUNE=0
+REVERT_MACOS=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -31,8 +33,9 @@ while [[ $# -gt 0 ]]; do
     --all-optional)    ALL_OPTIONAL=1 ;;
     --reset-selection) RESET_SELECTION=1 ;;
     --prune)           PRUNE=1 ;;
+    --revert-macos)    REVERT_MACOS=1 ;;
     -h|--help)
-      sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -53,6 +56,8 @@ DOTFILES_ROOT="$ROOT"
 source "$ROOT/scripts/lib-selection.sh"
 # shellcheck source=scripts/lib-skills.sh
 source "$ROOT/scripts/lib-skills.sh"
+# shellcheck source=scripts/lib-macos.sh
+source "$ROOT/scripts/lib-macos.sh"
 
 if [[ -t 1 ]]; then
   BOLD=$'\033[1m'; DIM=$'\033[2m'; RED=$'\033[31m'; GREEN=$'\033[32m'
@@ -68,6 +73,21 @@ fail() { printf '%serror:%s %s\n' "$RED" "$RESET" "$1" >&2; exit 1; }
 
 if (( DRY_RUN )); then
   printf '%sDRY RUN%s — nothing will be modified\n\n' "$YELLOW" "$RESET"
+fi
+
+if (( REVERT_MACOS )); then
+  if (( DO_SELECT || ALL_OPTIONAL || RESET_SELECTION || PRUNE )); then
+    fail "--revert-macos cannot be combined with selection flags"
+  fi
+  step "Revert macOS defaults"
+  macos_revert "$DRY_RUN"
+  if [[ -n "$MACOS_REPORT" ]]; then
+    while IFS=$'\t' read -r level message; do
+      [[ -z "$level" ]] && continue
+      if [[ "$level" == "warn" ]]; then warn "$message"; else info "$message"; fi
+    done <<< "$MACOS_REPORT"
+  fi
+  exit 0
 fi
 
 # ------------------------------------------------- 1. Command Line Tools
@@ -305,7 +325,30 @@ else
   chezmoi apply --force --verbose 2>&1 | sed 's/^/    /'
 fi
 
-# ------------------------------------------------------- 9. Agent skills
+# ------------------------------------------------------- 9. macOS defaults
+# Selected groups are applied after chezmoi so the configs are already in
+# place. Each group is a list of user-level defaults; the before-file makes
+# --revert-macos possible. Drift is reported by verify.sh, not enforced here.
+step "macOS defaults"
+MACOS_SELECTED=""
+for group in keyboard finder screenshots apps; do
+  sel_has "macos:$group" && MACOS_SELECTED="$MACOS_SELECTED$group"$'\n'
+done
+if [[ -z "$MACOS_SELECTED" ]]; then
+  info "no groups selected"
+elif ! macos_load_manifest; then
+  warn "scripts/macos-defaults.tsv: ${MACOS_CONF_ERRORS//$'\n'/; }"
+else
+  macos_apply_groups "$MACOS_SELECTED" "$DRY_RUN"
+  if [[ -n "$MACOS_REPORT" ]]; then
+    while IFS=$'\t' read -r level message; do
+      [[ -z "$level" ]] && continue
+      if [[ "$level" == "warn" ]]; then warn "$message"; else info "$message"; fi
+    done <<< "$MACOS_REPORT"
+  fi
+fi
+
+# ------------------------------------------------------ 10. Agent skills
 # Skills are not vendored: each upstream is a floating checkout updated on
 # every run, and ~/.agents/skills holds symlinks into those checkouts. Dirty
 # checkouts, duplicate names and network failures warn instead of aborting;
@@ -323,7 +366,7 @@ if [[ -n "$SKILLS_REPORT" ]]; then
   done <<< "$SKILLS_REPORT"
 fi
 
-# ---------------------------------------------------------------- 10. Prune
+# --------------------------------------------------------------- 11. Prune
 if (( PRUNE )); then
   step "Prune deselected configs"
   if (( DRY_RUN )); then
@@ -334,7 +377,7 @@ if (( PRUNE )); then
   fi
 fi
 
-# --------------------------------------------------- 11. Shell framework
+# --------------------------------------------------- 12. Shell framework
 # Oh My Zsh publishes no tags, so both pins are commit SHAs: the pair this
 # machine runs today. Moving either is a deliberate edit, not a side effect of
 # the day the machine was built.
@@ -395,7 +438,7 @@ else
     "$P10K_PIN" "powerlevel10k" || true
 fi
 
-# ------------------------------------------------- 12. Ghostty terminfo
+# ------------------------------------------------- 13. Ghostty terminfo
 # Ghostty keeps its terminfo inside the app bundle, where ncurses will not look.
 # tmux (and anything over ssh) needs TERM=xterm-ghostty to be resolvable, so the
 # bundled entries are copied into the standard per-user location.
@@ -428,7 +471,7 @@ else
   warn "Ghostty bundle not found — skipping terminfo"
 fi
 
-# ------------------------------------------------------- 13. tmux plugins
+# ------------------------------------------------------- 14. tmux plugins
 # TPM's installer clones with `git clone -b <ref>`, which fails when the ref
 # is a raw commit: tmux-cpu has no tags, so that pin can never install through
 # TPM. Bootstrap installs every declared plugin itself — tags and commits both
@@ -514,7 +557,7 @@ else
   info "plugins: $(ls "$HOME/.tmux/plugins" | tr '\n' ' ')"
 fi
 
-# ------------------------------------------------------- 14. yazi packages
+# ------------------------------------------------------- 15. yazi packages
 # Flavors and plugins are not vendored; package.toml pins them and `ya`
 # installs the exact refs recorded there.
 step "yazi packages"
@@ -529,7 +572,7 @@ else
   warn "ya not found — skipping yazi packages"
 fi
 
-# --------------------------------------------------------------- 15. Verify
+# --------------------------------------------------------------- 16. Verify
 step "Verify"
 if [[ -x "$ROOT/scripts/verify.sh" ]]; then
   if (( DRY_RUN )); then

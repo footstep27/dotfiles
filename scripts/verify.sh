@@ -23,6 +23,8 @@ DOTFILES_ROOT="$ROOT"
 source "$ROOT/scripts/lib-selection.sh"
 # shellcheck source=lib-skills.sh
 source "$ROOT/scripts/lib-skills.sh"
+# shellcheck source=lib-macos.sh
+source "$ROOT/scripts/lib-macos.sh"
 
 for arg in "$@"; do
   case "$arg" in
@@ -155,6 +157,30 @@ if (( SELECTION_PRESENT )); then
   fi
 else
   warn "optional selection" "none saved — run: $ROOT/bootstrap.sh --select"
+fi
+
+# ------------------------------------------------------- macOS defaults
+# Only selected groups are checked, and drift warns: these are preferences,
+# not required infrastructure. --revert-macos is the undo path.
+if (( SELECTION_PRESENT )); then
+  MACOS_GROUPS=""
+  for group in keyboard finder screenshots apps; do
+    sel_has "macos:$group" && MACOS_GROUPS="$MACOS_GROUPS$group"$'\n'
+  done
+  if [[ -z "$MACOS_GROUPS" ]]; then
+    pass "macos defaults" "no groups selected"
+  elif ! macos_load_manifest; then
+    fail "macos defaults" "manifest: ${MACOS_CONF_ERRORS//$'\n'/; }"
+  else
+    macos_check_groups "$MACOS_GROUPS"
+    if [[ -z "$MACOS_DRIFT" ]]; then
+      pass "macos defaults" "selected groups match"
+    else
+      DRIFT_COUNT="$(printf '%s' "$MACOS_DRIFT" | grep -c .)"
+      DRIFT_FIRST="$(printf '%s' "$MACOS_DRIFT" | head -3 | tr '\n' ';' | sed 's/;$//')"
+      warn "macos defaults" "$DRIFT_COUNT key(s) differ: $DRIFT_FIRST — run: $ROOT/bootstrap.sh"
+    fi
+  fi
 fi
 
 # ------------------------------------------------------- Shell framework

@@ -43,6 +43,10 @@ _Avoid_: mandatory set, core package
 A managed-file group that can be applied independently of whether its tool is installed.
 _Avoid_: config profile, optional file
 
+**macOS preference group**:
+A named set of user-level macOS defaults applied by bootstrap when selected; it is not a managed file.
+_Avoid_: config group, system setting, profile
+
 **Managed file**:
 A file in this repository that chezmoi copies into `$HOME`.
 _Avoid_: dotfile
