@@ -40,18 +40,23 @@ screenshots	com.apple.screencapture	type	string	png
 screenshots	com.apple.screencapture	disable-shadow	bool	true
 screenshots	com.apple.screencapture	show-thumbnail	bool	false
 
-# App defaults
-apps	com.apple.TextEdit	RichText	int	0
-apps	com.apple.TextEdit	PlainTextEncoding	int	4
-apps	com.apple.TextEdit	PlainTextEncodingForWrite	int	4
+# App defaults that live in a normal preferences domain
 apps	com.apple.ActivityMonitor	ShowCategory	int	0
 apps	com.apple.ActivityMonitor	UpdatePeriod	int	2
 apps	com.apple.ActivityMonitor	SortColumn	string	CPUUsage
 apps	com.apple.ActivityMonitor	SortDirection	int	0
 apps	com.apple.DiskUtility	DUDebugMenuEnabled	bool	true
 apps	com.apple.DiskUtility	advanced-image-options	bool	true
-apps	com.apple.Safari	IncludeDevelopMenu	bool	true
-apps	com.apple.Safari	WebKitDeveloperExtrasEnabledPreferenceKey	bool	true
-apps	com.apple.Safari	com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled	bool	true
-apps	com.apple.Safari	ShowFullURLInSmartSearchField	bool	true
 apps	com.apple.Terminal	SecureKeyboardEntry	bool	true
+
+# Sandboxed apps keep preferences inside Application Support containers. macOS
+# protects those from other processes; these keys only apply when the terminal
+# has Full Disk Access. The group is separate so the normal `apps` group works
+# without that permission.
+sandboxed	com.apple.TextEdit	RichText	int	0
+sandboxed	com.apple.TextEdit	PlainTextEncoding	int	4
+sandboxed	com.apple.TextEdit	PlainTextEncodingForWrite	int	4
+sandboxed	com.apple.Safari	IncludeDevelopMenu	bool	true
+sandboxed	com.apple.Safari	WebKitDeveloperExtrasEnabledPreferenceKey	bool	true
+sandboxed	com.apple.Safari	com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled	bool	true
+sandboxed	com.apple.Safari	ShowFullURLInSmartSearchField	bool	true

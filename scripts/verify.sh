@@ -164,7 +164,7 @@ fi
 # not required infrastructure. --revert-macos is the undo path.
 if (( SELECTION_PRESENT )); then
   MACOS_GROUPS=""
-  for group in keyboard finder screenshots apps; do
+  for group in keyboard finder screenshots apps sandboxed; do
     sel_has "macos:$group" && MACOS_GROUPS="$MACOS_GROUPS$group"$'\n'
   done
   if [[ -z "$MACOS_GROUPS" ]]; then
@@ -178,7 +178,7 @@ if (( SELECTION_PRESENT )); then
     else
       DRIFT_COUNT="$(printf '%s' "$MACOS_DRIFT" | grep -c .)"
       DRIFT_FIRST="$(printf '%s' "$MACOS_DRIFT" | head -3 | tr '\n' ';' | sed 's/;$//')"
-      warn "macos defaults" "$DRIFT_COUNT key(s) differ: $DRIFT_FIRST — run: $ROOT/bootstrap.sh"
+      warn "macos defaults" "$DRIFT_COUNT difference(s): $DRIFT_FIRST — run: $ROOT/bootstrap.sh"
     fi
   fi
 fi

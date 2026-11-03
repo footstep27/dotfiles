@@ -331,7 +331,7 @@ fi
 # --revert-macos possible. Drift is reported by verify.sh, not enforced here.
 step "macOS defaults"
 MACOS_SELECTED=""
-for group in keyboard finder screenshots apps; do
+for group in keyboard finder screenshots apps sandboxed; do
   sel_has "macos:$group" && MACOS_SELECTED="$MACOS_SELECTED$group"$'\n'
 done
 if [[ -z "$MACOS_SELECTED" ]]; then

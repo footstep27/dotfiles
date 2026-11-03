@@ -5,4 +5,5 @@
 macos	keyboard		Fast key repeat, repeat instead of accent popup, no autocorrect or smart substitutions.
 macos	finder		Show extensions, path and status bars, folders first, current-folder search and no .DS_Store on external volumes.
 macos	screenshots		Save to ~/Pictures/Screenshots as PNG without shadows or the floating thumbnail.
-macos	apps		TextEdit plain text, Activity Monitor details, Disk Utility debug options, Safari Develop menu and Terminal secure keyboard entry.
+macos	apps		Activity Monitor details, Disk Utility debug options and Terminal secure keyboard entry.
+macos	sandboxed		TextEdit and Safari defaults; requires Full Disk Access for the terminal.

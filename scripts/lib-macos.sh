@@ -89,6 +89,16 @@ macos_current() { # domain key
   fi
 }
 
+# Sandboxed apps keep their preferences inside ~/Library/Containers/<domain>.
+# macOS blocks other processes from that directory unless the terminal has Full
+# Disk Access; detect it so we can skip the group with one clear message
+# instead of a wall of `defaults` errors.
+macos_domain_accessible() { # domain
+  local domain="$1" root="$HOME/Library/Containers/$1"
+  [[ -d "$root" ]] || return 0
+  [[ -w "$root/Data/Library/Preferences" ]]
+}
+
 macos_normalize() { # type value
   case "$1" in
     bool)
@@ -140,10 +150,10 @@ macos_record_before() { # group domain key type current
 
 macos_write() { # type domain key value
   case "$1" in
-    bool)   defaults write "$2" "$3" -bool "$4" ;;
-    int)    defaults write "$2" "$3" -int "$4" ;;
-    float)  defaults write "$2" "$3" -float "$4" ;;
-    string) defaults write "$2" "$3" -string "$4" ;;
+    bool)   defaults write "$2" "$3" -bool "$4" 2>/dev/null ;;
+    int)    defaults write "$2" "$3" -int "$4" 2>/dev/null ;;
+    float)  defaults write "$2" "$3" -float "$4" 2>/dev/null ;;
+    string) defaults write "$2" "$3" -string "$4" 2>/dev/null ;;
     *)      return 1 ;;
   esac
 }
@@ -159,13 +169,31 @@ macos_restart_group() { # group
 }
 
 macos_apply_group() { # group dry
-  local group="$1" dry="$2" i=0 changed=0 unchanged=0 total=0 current desired
+  local group="$1" dry="$2" i=0 changed=0 unchanged=0 total=0 current desired blocked="" domain
   if [[ "$group" == "screenshots" ]] && (( ! dry )); then
     mkdir -p "$HOME/Pictures/Screenshots" || {
       macos_report warn "screenshots: could not create $HOME/Pictures/Screenshots"
     }
   fi
 
+  while (( i < MACOS_N )); do
+    if [[ "${MACOS_GROUP[$i]}" == "$group" ]] && ! macos_domain_accessible "${MACOS_DOMAIN[$i]}"; then
+      domain="${MACOS_DOMAIN[$i]}"
+      case " $blocked " in
+        *" $domain "*) ;;
+        *)
+          if [[ -z "$blocked" ]]; then blocked="$domain"; else blocked="$blocked $domain"; fi
+          ;;
+      esac
+    fi
+    i=$((i + 1))
+  done
+  if [[ -n "$blocked" ]]; then
+    macos_report warn "$group: macOS protects $blocked — grant Full Disk Access to your terminal or set these manually"
+    return 0
+  fi
+
+  i=0
   while (( i < MACOS_N )); do
     if [[ "${MACOS_GROUP[$i]}" == "$group" ]]; then
       total=$((total + 1))
@@ -216,15 +244,27 @@ macos_apply_groups() { # groups dry
 }
 
 macos_check_groups() { # groups
-  local groups="$1" group i=0 total=0 current desired
+  local groups="$1" group i=0 total=0 current desired blocked="" domain
   MACOS_DRIFT=""
   while IFS= read -r group; do
     [[ -z "$group" ]] && continue
     total=0
+    blocked=""
     i=0
     while (( i < MACOS_N )); do
       if [[ "${MACOS_GROUP[$i]}" == "$group" ]]; then
         total=$((total + 1))
+        if ! macos_domain_accessible "${MACOS_DOMAIN[$i]}"; then
+          domain="${MACOS_DOMAIN[$i]}"
+          case " $blocked " in
+            *" $domain "*) ;;
+            *)
+              if [[ -z "$blocked" ]]; then blocked="$domain"; else blocked="$blocked $domain"; fi
+              ;;
+          esac
+          i=$((i + 1))
+          continue
+        fi
         current="$(macos_current "${MACOS_DOMAIN[$i]}" "${MACOS_KEY[$i]}")"
         desired="$(macos_expand_value "${MACOS_VALUE[$i]}")"
         if ! macos_equal "${MACOS_TYPE[$i]}" "$current" "$desired"; then
@@ -233,6 +273,9 @@ macos_check_groups() { # groups
       fi
       i=$((i + 1))
     done
+    if [[ -n "$blocked" ]]; then
+      MACOS_DRIFT="$MACOS_DRIFT$group: requires Full Disk Access for $blocked"$'\n'
+    fi
     if (( total == 0 )); then
       MACOS_DRIFT="$MACOS_DRIFT$group: no keys declared"$'\n'
     fi

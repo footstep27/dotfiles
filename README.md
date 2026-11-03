@@ -262,10 +262,13 @@ before the first change and exits without running the rest of the bootstrap.
 | `macos:keyboard` | Fast key repeat, repeat instead of the accent popup, no autocorrect or smart substitutions, full keyboard access. |
 | `macos:finder` | Show all extensions, path and status bars, folders first, current-folder search, expanded save and print panels, no `.DS_Store` on network or USB volumes. |
 | `macos:screenshots` | `~/Pictures/Screenshots`, PNG, no shadow, no floating thumbnail. |
-| `macos:apps` | TextEdit plain text and UTF-8, Activity Monitor all processes, Disk Utility debug options, Safari Develop menu, Terminal secure keyboard entry. |
+| `macos:apps` | Activity Monitor all processes, Disk Utility debug options, Terminal secure keyboard entry. |
+| `macos:sandboxed` | TextEdit plain text and UTF-8, Safari Develop menu and full URL. Requires Full Disk Access for the terminal. |
 
 The definitions live in `scripts/macos-defaults.tsv`. Deselecting a group later
-stops future application but does not undo what is already set.
+stops future application but does not undo what is already set. Sandboxed apps
+keep their preferences in protected containers; `macos:sandboxed` is separate so
+the normal `macos:apps` group works without granting Full Disk Access.
 
 ### Settings written into `$HOME`
 
@@ -331,7 +334,8 @@ any error reaches the terminal. It is the proof that the shell degrades instead 
    items if you want fallbacks.
 2. **Choose macOS preference groups.** They are opt-in. Run `./bootstrap.sh --select` and check
    the `macOS` category; `./bootstrap.sh --revert-macos` undoes what bootstrap applied. Some
-   app defaults, such as Safari’s, only take effect after relaunch.
+   app defaults, such as Safari’s, only take effect after relaunch. The `macos:sandboxed` group
+   needs Full Disk Access for the terminal; without it the group is skipped with a warning.
 
 Those are the only manual steps. The fonts are installed from the `Brewfile`, so there is
 nothing to download by hand.
@@ -348,6 +352,7 @@ nothing to download by hand.
 | Skills missing or stale | Rerun `./bootstrap.sh`. A checkout with local edits is skipped on purpose; inspect it with `git -C ~/.local/share/dotfiles/upstreams/<owner>/<repo> status`. |
 | `~/.profile` changes after apply | Docker Desktop rewrites its PATH block with an absolute home path. Bootstrap archives drift and forces the repo version; rerun `./bootstrap.sh` after Docker touches it. |
 | macOS defaults drifted | Rerun `./bootstrap.sh` to reapply the selected groups, or `./bootstrap.sh --revert-macos` to undo them. |
+| TextEdit/Safari defaults skipped | They are in `macos:sandboxed`, which needs Full Disk Access for the terminal. Grant it in System Settings → Privacy & Security, or set those keys by hand. |
 | Want to see the plan first | `chezmoi apply --dry-run --verbose` |
 
 ## Layout

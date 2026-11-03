@@ -160,6 +160,28 @@ else
   fail "invalid manifest" "unknown type accepted"
 fi
 
+BLOCKED="$HOME/Library/Containers/com.apple.TestApp"
+mkdir -p "$BLOCKED/Data/Library/Preferences"
+chmod 500 "$BLOCKED/Data/Library/Preferences"
+printf 'sandboxed\tcom.apple.TestApp\tTestKey\tbool\ttrue\n' > "$TMP/blocked.tsv"
+DOTFILES_MACOS_MANIFEST="$TMP/blocked.tsv"
+macos_load_manifest
+macos_apply_groups $'sandboxed\n' 0
+if printf '%s' "$MACOS_REPORT" | grep -Fq 'Full Disk Access' \
+   && ! defaults read com.apple.TestApp TestKey >/dev/null 2>&1; then
+  pass "sandboxed skip" "blocked container left untouched"
+else
+  fail "sandboxed skip" "blocked container was written"
+fi
+
+chmod 700 "$BLOCKED/Data/Library/Preferences"
+macos_apply_groups $'sandboxed\n' 0
+if [[ "$(defaults read com.apple.TestApp TestKey 2>/dev/null)" == "1" ]]; then
+  pass "sandboxed writable" "accessible container applied"
+else
+  fail "sandboxed writable" "accessible container not applied"
+fi
+
 printf '\n'
 if (( FAILURES == 0 )); then
   printf '%s%d failed%s\n\n' "$GREEN" "$FAILURES" "$RESET"; exit 0

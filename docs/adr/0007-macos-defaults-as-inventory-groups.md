@@ -7,10 +7,17 @@ owns. A `run_onchange` script would execute on every machine, with no per-machin
 no read-back, and rewriting a whole preference domain would clobber keys the repository does
 not understand.
 
-The repository now has four optional groups — `macos:keyboard`, `macos:finder`,
-`macos:screenshots` and `macos:apps` — declared in `scripts/macos-defaults.tsv`. They use a
-separate `macos` inventory kind, start unchecked, and are applied after `chezmoi apply` only
-when selected. The manifest is the single source of truth for apply, verification and revert.
+The repository now has five optional groups — `macos:keyboard`, `macos:finder`,
+`macos:screenshots`, `macos:apps` and `macos:sandboxed` — declared in
+`scripts/macos-defaults.tsv`. They use a separate `macos` inventory kind, start unchecked, and
+are applied after `chezmoi apply` only when selected. The manifest is the single source of truth
+for apply, verification and revert.
+
+Sandboxed apps keep their preferences inside `~/Library/Containers/<bundle-id>`. macOS protects
+those directories from other processes, so `defaults write` fails without Full Disk Access for
+the terminal. TextEdit and Safari therefore live in `macos:sandboxed`, separate from the
+working `macos:apps` group. When the container is not writable, bootstrap skips that group with
+one clear message instead of emitting one `defaults` error per key.
 
 Writes are deliberate: bootstrap reads the current value, normalises booleans and numbers,
 skips keys that already match, and records the previous value before the first change.
@@ -30,6 +37,8 @@ optional hardware. Touch ID for `sudo`, the firewall, Gatekeeper and FileVault s
 
 - A new `macos` item kind joins `brew`, `cask`, `config`, `npm`, `vscode` and `tap`. It is not
   written into the generated Brewfile and carries no managed paths.
+- `macos:sandboxed` is opt-in and documents its Full Disk Access requirement; `macos:apps`
+  stays usable without that permission.
 - `~/.local/state/dotfiles/macos-defaults.before` is machine state: one line per key changed,
   with `__unset__` when there was no previous value. Revert deletes the file when every value
   was restored.
