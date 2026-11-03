@@ -8,5 +8,4 @@ brew	rmlint		Finds duplicate, broken and wasted files.
 brew	sevenzip		7-Zip archiver and extractor.
 brew	simg2img		Converts Android sparse images to raw images.
 cask	android-platform-tools		Android SDK tools including adb and fastboot.
-cask	blip		Sends files of any size between devices.
 cask	fuse-t	requires=tap:macos-fuse-t/cask	Kext-less user-space filesystem support for macOS.
