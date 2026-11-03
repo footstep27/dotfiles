@@ -170,11 +170,15 @@ FRAMEWORK_ISSUES=()
 [[ -f "$P10K_DIR/powerlevel10k.zsh-theme" ]] || FRAMEWORK_ISSUES+=("powerlevel10k missing")
 if [[ -f "$OMZ_DIR/oh-my-zsh.sh" && -n "$OMZ_PIN" ]]; then
   actual="$(git -C "$OMZ_DIR" rev-parse HEAD 2>/dev/null)"
-  [[ "$actual" == "$OMZ_PIN" ]] || FRAMEWORK_ISSUES+=("oh-my-zsh at ${actual:0:7}, pin ${OMZ_PIN:0:7}")
+  expected="$(git -C "$OMZ_DIR" rev-parse --verify --quiet "${OMZ_PIN}^{commit}" 2>/dev/null || true)"
+  [[ -n "$expected" && "$actual" == "$expected" ]] \
+    || FRAMEWORK_ISSUES+=("oh-my-zsh at ${actual:0:7}, pin ${OMZ_PIN:0:7}")
 fi
 if [[ -f "$P10K_DIR/powerlevel10k.zsh-theme" && -n "$P10K_PIN" ]]; then
   actual="$(git -C "$P10K_DIR" rev-parse HEAD 2>/dev/null)"
-  [[ "$actual" == "$P10K_PIN" ]] || FRAMEWORK_ISSUES+=("powerlevel10k at ${actual:0:7}, pin ${P10K_PIN:0:7}")
+  expected="$(git -C "$P10K_DIR" rev-parse --verify --quiet "${P10K_PIN}^{commit}" 2>/dev/null || true)"
+  [[ -n "$expected" && "$actual" == "$expected" ]] \
+    || FRAMEWORK_ISSUES+=("powerlevel10k at ${actual:0:7}, pin ${P10K_PIN:0:7}")
 fi
 if [[ ${#FRAMEWORK_ISSUES[@]} -eq 0 ]]; then
   pass "shell framework" "oh-my-zsh + powerlevel10k at pinned commits"
@@ -434,12 +438,17 @@ elif command -v tmux >/dev/null 2>&1; then
     ref="${spec##*#}"
     dir="$HOME/.tmux/plugins/$name"
     SPECS=$((SPECS + 1))
-    if [[ ! -d "$dir" ]]; then
+    if [[ ! -d "$dir/.git" ]]; then
       MISSING_PLUGINS+=("$name")
       continue
     fi
-    actual="$(git -C "$dir" describe --tags --always 2>/dev/null)"
-    if [[ "$actual" != "$ref" ]]; then WRONGREF+=("$name@$actual"); fi
+    actual="$(git -C "$dir" rev-parse HEAD 2>/dev/null)"
+    expected="$(git -C "$dir" rev-parse --verify --quiet "${ref}^{commit}" 2>/dev/null || true)"
+    if [[ -z "$expected" ]]; then
+      WRONGREF+=("$name@unknown-ref")
+    elif [[ "$actual" != "$expected" ]]; then
+      WRONGREF+=("$name@${actual:0:7}")
+    fi
   done < <(sed -n "s/^[[:space:]]*set -g @plugin '\(.*\)'.*/\1/p" "$HOME/.tmux.conf")
   if (( SPECS == 0 )); then
     fail "tmux plugins" "no @plugin lines readable from ~/.tmux.conf"

@@ -406,29 +406,80 @@ else
 fi
 
 # ------------------------------------------------------- 13. tmux plugins
-# TPM installs missing plugins but never checks out the ref declared after '#',
-# so the pins are applied explicitly here.
+# TPM's installer clones with `git clone -b <ref>`, which fails when the ref
+# is a raw commit: tmux-cpu has no tags, so that pin can never install through
+# TPM. Bootstrap installs every declared plugin itself — tags and commits both
+# work — and TPM stays the runtime loader. A full clone is deliberate: a
+# shallow clone would not contain an older commit pin.
 step "tmux plugins"
+retry_once() { "$@" || "$@"; }
+
+ensure_pinned_plugin() { # repo dir ref name
+  local repo="$1" dir="$2" ref="$3" name="$4" target fresh=0
+  if [[ ! -d "$dir/.git" ]]; then
+    # Never delete a directory we did not create: a hand-made plugin path is
+    # not ours to replace.
+    if [[ -e "$dir" ]]; then
+      warn "$name: exists but is not a git checkout — leaving it alone"
+      return 1
+    fi
+    mkdir -p "$(dirname "$dir")"
+    if ! git clone --quiet "$repo" "$dir" 2>/dev/null; then
+      rm -rf -- "$dir"
+      if ! git clone --quiet "$repo" "$dir" 2>/dev/null; then
+        rm -rf -- "$dir"
+        warn "$name: clone failed"
+        return 1
+      fi
+    fi
+    fresh=1
+  else
+    # Same rule as Oh My Zsh, powerlevel10k and skill checkouts: local edits
+    # always win over an upstream pin.
+    if [[ -n "$(git -C "$dir" status --porcelain --untracked-files=no 2>/dev/null)" ]]; then
+      warn "$name: local changes — leaving it alone"
+      return 0
+    fi
+  fi
+
+  target="$(git -C "$dir" rev-parse --verify --quiet "${ref}^{commit}" 2>/dev/null || true)"
+  if [[ -z "$target" ]]; then
+    if ! retry_once git -C "$dir" fetch --quiet --tags origin 2>/dev/null; then
+      warn "$name: could not fetch $ref"
+      return 1
+    fi
+    target="$(git -C "$dir" rev-parse --verify --quiet "${ref}^{commit}" 2>/dev/null || true)"
+  fi
+  if [[ -z "$target" ]]; then
+    warn "$name: unknown ref $ref"
+    return 1
+  fi
+
+  if [[ "$(git -C "$dir" rev-parse HEAD 2>/dev/null)" == "$target" ]]; then
+    if (( fresh )); then info "$name: installed at $ref"; else info "$name: already at $ref"; fi
+    return 0
+  fi
+  if retry_once git -C "$dir" checkout --quiet "$target" 2>/dev/null; then
+    if (( fresh )); then info "$name: installed at $ref"; else info "$name: moved to $ref"; fi
+    return 0
+  fi
+  warn "$name: could not check out $ref"
+  return 1
+}
+
 install_tmux_plugins() {
   mkdir -p "$HOME/.tmux/plugins"
-  if [[ ! -d "$HOME/.tmux/plugins/tpm" ]]; then
-    git clone --depth 1 https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
-  fi
-  tmux start-server \; new-session -d
-  tmux run-shell "$HOME/.tmux/plugins/tpm/bin/install_plugins" || true
-  tmux kill-server 2>/dev/null || true
-
-  # `set -g @plugin 'owner/repo#ref'` → checkout ref in ~/.tmux/plugins/repo
+  local spec name ref repo dir failed=0
+  # `set -g @plugin 'owner/repo#ref'` → ~/.tmux/plugins/repo at ref
   while IFS= read -r spec; do
     if [[ -z "$spec" || "$spec" != *"#"* ]]; then continue; fi
     name="${spec%%#*}"; name="${name##*/}"
     ref="${spec##*#}"
+    repo="https://github.com/${spec%%#*}.git"
     dir="$HOME/.tmux/plugins/$name"
-    [[ -d "$dir/.git" ]] || continue
-    git -C "$dir" fetch --tags --quiet 2>/dev/null || true
-    git -C "$dir" checkout --quiet "$ref" 2>/dev/null \
-      || warn "$name: could not check out $ref"
+    ensure_pinned_plugin "$repo" "$dir" "$ref" "$name" || failed=$((failed + 1))
   done < <(sed -n "s/^[[:space:]]*set -g @plugin '\(.*\)'.*/\1/p" "$HOME/.tmux.conf")
+  (( failed == 0 )) || warn "$failed plugin(s) could not be installed"
 }
 
 if ! sel_has config:tmux; then

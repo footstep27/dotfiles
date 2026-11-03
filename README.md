@@ -165,7 +165,7 @@ The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore i
 |---|---|
 | Shell | `.zshrc`, `.zprofile`, `.zshenv`, `.p10k.zsh`, legacy `.tcshrc` and `.profile` |
 | Ghostty | `~/.config/ghostty/config` |
-| tmux | `.tmux.conf` (plugins pinned here, installed via TPM) |
+| tmux | `.tmux.conf` (plugins pinned here, installed by bootstrap and loaded by TPM) |
 | WezTerm | `.wezterm.lua` + the one theme file actually used, applied only when the WezTerm cask is selected |
 | TUIs | `yazi` config, `btop` config and its Catppuccin Macchiato theme |
 | Fonts | Maple Mono NF, installed from the required `Brewfile` — nothing manual |
@@ -225,9 +225,13 @@ floating checkout would make two machines differ for no reason:
 
 ### Plugins fetched after the configs land
 
+`bootstrap.sh` installs each tmux plugin declared in `.tmux.conf` and checks out
+the ref after `#`, so tags and raw commit pins both work. TPM is only the
+runtime loader; its installer is not used.
+
 | Plugin | Role |
 |---|---|
-| **tpm** | tmux plugin manager; cloned to `~/.tmux/plugins/tpm` and run from `.tmux.conf`. |
+| **tpm** | tmux plugin manager; installed like any other pinned plugin and run from `.tmux.conf`. |
 | **tmux-sensible** | Baseline tmux settings that are safe to agree with. |
 | **tmux-resurrect** | Saves and restores sessions across restarts. |
 | **tmux-cpu** | CPU load segment in the status bar, pinned to a commit because upstream has no tags. |
@@ -309,7 +313,7 @@ to download by hand.
 | Prompt or glyphs look wrong | Run `./scripts/verify.sh`; if the text face is not Maple Mono NF, re-run `./bootstrap.sh`. See `docs/fonts.md`. |
 | `xterm-ghostty` unknown over ssh | Rerun `./bootstrap.sh` (copies the bundled terminfo) and check with `infocmp -x xterm-ghostty`. |
 | `sourceDir` points at another checkout | Fix `~/.config/chezmoi/chezmoi.toml` so it names this repo, or rerun `bootstrap.sh`. |
-| tmux plugins missing | `bash ~/.tmux/plugins/tpm/bin/install_plugins`, or rerun `./bootstrap.sh`. |
+| tmux plugins missing | Rerun `./bootstrap.sh`; it installs every pinned plugin directly. TPM's own installer cannot resolve a raw commit pin. |
 | Skills missing or stale | Rerun `./bootstrap.sh`. A checkout with local edits is skipped on purpose; inspect it with `git -C ~/.local/share/dotfiles/upstreams/<owner>/<repo> status`. |
 | Want to see the plan first | `chezmoi apply --dry-run --verbose` |
 
