@@ -1,5 +1,6 @@
 # name: Dev apps
 cask	codexbar		Menu bar app for tracking agentic coding limits and usage.
+cask	cursor		AI-first code editor with chat, inline edits and agent mode.
 cask	docker-desktop		Desktop app for building and running Docker containers.
 cask	hermes-desktop		Open-source desktop AI agent.
 cask	iterm2		Feature-rich terminal emulator for macOS.
