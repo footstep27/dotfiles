@@ -1,5 +1,7 @@
 # name: Security
+brew	ghidra		NSA software reverse engineering framework for binary analysis.
 brew	gnupg		GNU Privacy Guard for encryption, signing and key management.
+brew	jadx		Dex to Java decompiler for Android APK and DEX files.
 brew	magic-wormhole		Transfers files between machines with a short one-time code.
 brew	mkcert		Creates locally-trusted TLS certificates for development.
 brew	pinentry-mac		macOS passphrase prompt used by GPG.
