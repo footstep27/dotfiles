@@ -18,6 +18,7 @@
 DOTFILES_ROOT="${DOTFILES_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 DOTFILES_STATE_DIR="${DOTFILES_STATE_DIR:-$HOME/.local/state/dotfiles}"
 DOTFILES_SELECTION_FILE="$DOTFILES_STATE_DIR/selection"
+DOTFILES_INVENTORY_FILE="$DOTFILES_STATE_DIR/inventory"
 DOTFILES_IGNORE_FILE="$DOTFILES_STATE_DIR/ignored-paths"
 DOTFILES_BREWFILE="$DOTFILES_STATE_DIR/Brewfile.selected"
 
@@ -263,6 +264,41 @@ selection_save() {
     fi
     i=$((i + 1))
   done
+}
+
+# The selection file only records what is checked, so it cannot tell a newly
+# added inventory item from one the user deliberately left unchecked. Keep a
+# snapshot of every known item id and compare against it on the next run.
+selection_inventory_current() {
+  local i=0
+  while (( i < ITEM_N )); do
+    printf '%s\n' "${ITEM_ID[$i]}"
+    i=$((i + 1))
+  done
+}
+
+selection_write_inventory() {
+  mkdir -p "$DOTFILES_STATE_DIR"
+  selection_inventory_current > "$DOTFILES_INVENTORY_FILE"
+}
+
+selection_inventory_changed() {
+  [[ -f "$DOTFILES_INVENTORY_FILE" ]] || return 0
+  [[ "$(selection_inventory_current)" == "$(cat "$DOTFILES_INVENTORY_FILE")" ]] && return 1
+  return 0
+}
+
+# Print the number of current items absent from the snapshot. Returns non-zero
+# when there is no snapshot, so callers can fall back to a generic message.
+selection_new_item_count() {
+  [[ -f "$DOTFILES_INVENTORY_FILE" ]] || return 1
+  local i=0 n=0
+  while (( i < ITEM_N )); do
+    grep -Fxq "${ITEM_ID[$i]}" "$DOTFILES_INVENTORY_FILE" 2>/dev/null \
+      || n=$((n + 1))
+    i=$((i + 1))
+  done
+  printf '%s' "$n"
 }
 
 selection_reset() {

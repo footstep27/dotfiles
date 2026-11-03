@@ -106,6 +106,22 @@ else
   fail "validation" "selection is inconsistent"
 fi
 
+selection_write_inventory
+if ! selection_inventory_changed; then
+  pass "inventory snapshot" "matches the manifests"
+else
+  fail "inventory snapshot" "reports a change immediately after writing"
+fi
+
+SNAPSHOT="$DOTFILES_INVENTORY_FILE.tmp"
+grep -vx 'brew:ghidra' "$DOTFILES_INVENTORY_FILE" > "$SNAPSHOT"
+mv "$SNAPSHOT" "$DOTFILES_INVENTORY_FILE"
+if selection_inventory_changed && [[ "$(selection_new_item_count)" == "1" ]]; then
+  pass "new inventory item" "one addition detected"
+else
+  fail "new inventory item" "addition not detected"
+fi
+
 printf '\n'
 if (( FAILURES == 0 )); then
   printf '%s%d failed%s\n\n' "$GREEN" "$FAILURES" "$RESET"; exit 0

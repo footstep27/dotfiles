@@ -143,14 +143,16 @@ plus config toggles for the required tools. Each row carries a one-sentence desc
 `/` matches against names and descriptions. `space` toggles, `a`/`n` select or clear a
 category, `A`/`N` do the same for everything, and `enter` saves. Optional
 packages start unchecked; required packages are locked. Later runs reuse the saved selection,
-so `--select` is the command to revisit it.
+so `--select` is the command to revisit it. When a manifest gains items, bootstrap warns that
+the inventory changed and points at `--select`.
 
 `bootstrap.sh` is idempotent and runs, in order: Command Line Tools pre-flight → Homebrew
 (installing it if absent) → optional inventory → `Brewfile` → selected optional packages →
 chezmoi source wiring (including the age recipient) → archive of managed dotfiles when any
-drifted → `chezmoi apply` → agent skills cloned from their upstreams and linked into
-`~/.agents/skills` → Oh My Zsh and powerlevel10k at their pinned commits → Ghostty
-terminfo → tmux plugins at their pinned refs → yazi packages → `scripts/verify.sh`.
+drifted → `chezmoi apply` (forced, because the archive preserved the live copies) → agent
+skills cloned from their upstreams and linked into `~/.agents/skills` → Oh My Zsh and
+powerlevel10k at their pinned commits → Ghostty terminfo → tmux plugins at their pinned refs
+→ yazi packages → `scripts/verify.sh`.
 
 The selection file is machine state, never repository content. Deselecting an item only skips
 its installation; it never uninstalls anything. To remove a config that is no longer selected,
@@ -315,6 +317,7 @@ to download by hand.
 | `sourceDir` points at another checkout | Fix `~/.config/chezmoi/chezmoi.toml` so it names this repo, or rerun `bootstrap.sh`. |
 | tmux plugins missing | Rerun `./bootstrap.sh`; it installs every pinned plugin directly. TPM's own installer cannot resolve a raw commit pin. |
 | Skills missing or stale | Rerun `./bootstrap.sh`. A checkout with local edits is skipped on purpose; inspect it with `git -C ~/.local/share/dotfiles/upstreams/<owner>/<repo> status`. |
+| `~/.profile` changes after apply | Docker Desktop rewrites its PATH block with an absolute home path. Bootstrap archives drift and forces the repo version; rerun `./bootstrap.sh` after Docker touches it. |
 | Want to see the plan first | `chezmoi apply --dry-run --verbose` |
 
 ## Layout
@@ -336,9 +339,9 @@ docs/                   fonts, themes, decisions, diagram sources
 ```
 
 `~/.local/state/dotfiles/` is not part of the repo: it holds the saved `selection`, the
-generated `Brewfile.selected`, and the generated `ignored-paths` list that `.chezmoiignore`
-reads. `~/.local/share/dotfiles/upstreams/` is machine state too: it holds the floating skill
-checkouts that `~/.agents/skills` links into.
+inventory snapshot used to spot new items, the generated `Brewfile.selected`, and the
+generated `ignored-paths` list that `.chezmoiignore` reads. `~/.local/share/dotfiles/upstreams/`
+is machine state too: it holds the floating skill checkouts that `~/.agents/skills` links into.
 
 The README diagram is generated, not hand-drawn: edit `docs/diagrams/repo-overview.html`
 (and `-dark.html`), then re-export with the diagram-design skill:

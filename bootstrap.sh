@@ -105,10 +105,25 @@ fi
 step "Optional inventory"
 selection_load_items
 SELECTION_SAVED=0
+SELECTION_REVIEWED=0
 selection_load_file && SELECTION_SAVED=1 || true
 selection_prune_dependents
 
+# A saved selection only records what is checked, so adding an item to a
+# manifest cannot change it. Point at the checklist when the inventory moved;
+# --select, --all-optional and --reset-selection all review it directly.
+if (( SELECTION_SAVED )) && selection_inventory_changed \
+   && (( ! DO_SELECT && ! ALL_OPTIONAL && ! RESET_SELECTION )); then
+  NEW_ITEMS="$(selection_new_item_count || true)"
+  if [[ -n "$NEW_ITEMS" ]] && (( NEW_ITEMS > 0 )); then
+    warn "$NEW_ITEMS optional item(s) are new since your last selection — run ./bootstrap.sh --select"
+  else
+    warn "optional inventory changed — run ./bootstrap.sh --select"
+  fi
+fi
+
 if (( RESET_SELECTION )); then
+  SELECTION_REVIEWED=1
   if (( DRY_RUN )); then
     SELECTED=$'\n'
     SELECTION_SAVED=0
@@ -123,6 +138,7 @@ fi
 if (( ALL_OPTIONAL )); then
   selection_select_all
   SELECTION_SAVED=1
+  SELECTION_REVIEWED=1
   info "selected every non-conflicting optional item"
 fi
 
@@ -156,11 +172,13 @@ else
     "$ROOT/scripts/select.sh" || fail "selection cancelled — nothing installed"
     selection_load_file || true
     SELECTION_SAVED=1
+    SELECTION_REVIEWED=1
   elif (( ! SELECTION_SAVED )); then
     if [[ -t 0 && -t 1 ]]; then
       "$ROOT/scripts/select.sh" || fail "selection cancelled — nothing installed"
       selection_load_file || true
       SELECTION_SAVED=1
+      SELECTION_REVIEWED=1
     else
       selection_defaults
       warn "no terminal and no saved selection — applying required configs only"
@@ -169,6 +187,7 @@ else
   fi
   selection_generate
   selection_save
+  if (( SELECTION_REVIEWED )); then selection_write_inventory; fi
   info "selected $(selection_selected_count)/$(selection_optional_count) optional items"
 fi
 
@@ -279,7 +298,11 @@ step "Apply"
 if (( DRY_RUN )); then
   chezmoi apply --dry-run --verbose 2>&1 | sed 's/^/    /' || true
 else
-  chezmoi apply --verbose 2>&1 | sed 's/^/    /'
+  # The backup step archived every managed file when drift existed. Apply is
+  # forced so an unattended run cannot stop on a target Docker Desktop
+  # rewrote (it keeps replacing $HOME with an absolute path in .profile,
+  # .tcshrc and .zprofile).
+  chezmoi apply --force --verbose 2>&1 | sed 's/^/    /'
 fi
 
 # ------------------------------------------------------- 9. Agent skills
