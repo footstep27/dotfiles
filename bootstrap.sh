@@ -51,6 +51,19 @@ if (( DO_SELECT && ALL_OPTIONAL )); then
   exit 2
 fi
 
+STEP_N=0
+STEP_BAR=1
+STEP_BAR_WIDTH=16
+if (( REVERT_MACOS )); then
+  STEP_TOTAL=1
+elif (( DO_SELECT )) && (( ! DRY_RUN )); then
+  STEP_TOTAL=0
+  STEP_BAR=0
+else
+  STEP_TOTAL=15
+  if (( PRUNE )); then STEP_TOTAL=16; fi
+fi
+
 DOTFILES_ROOT="$ROOT"
 # shellcheck source=scripts/lib-selection.sh
 source "$ROOT/scripts/lib-selection.sh"
@@ -66,7 +79,29 @@ else
   BOLD=""; DIM=""; RED=""; GREEN=""; YELLOW=""; RESET=""
 fi
 
-step() { printf '%s==>%s %s\n' "$BOLD" "$RESET" "$1"; }
+step() {
+  STEP_N=$((STEP_N + 1))
+  if (( STEP_BAR )) && (( STEP_TOTAL > 0 )); then
+    local shown="$STEP_N" filled empty bar
+    (( shown > STEP_TOTAL )) && shown=$STEP_TOTAL
+    filled=$((shown * STEP_BAR_WIDTH / STEP_TOTAL))
+    (( filled > STEP_BAR_WIDTH )) && filled=$STEP_BAR_WIDTH
+    printf -v bar '%*s' "$filled" ''
+    printf -v empty '%*s' "$((STEP_BAR_WIDTH - filled))" ''
+    bar=${bar// /█}
+    empty=${empty// /░}
+    if [[ -t 1 ]]; then
+      printf '%s==>%s %s%s%s%s%s [%d/%d] %s\n' \
+        "$BOLD" "$RESET" "$GREEN" "$bar" "$DIM" "$empty" "$RESET" \
+        "$shown" "$STEP_TOTAL" "$1"
+    else
+      printf '==> [%d/%d] %s\n' "$shown" "$STEP_TOTAL" "$1"
+    fi
+  else
+    printf '%s==>%s %s\n' "$BOLD" "$RESET" "$1"
+  fi
+}
+step_plain() { printf '%s==>%s %s\n' "$BOLD" "$RESET" "$1"; }
 info() { printf '    %s%s%s\n' "$DIM" "$1" "$RESET"; }
 warn() { printf '%s    warn:%s %s\n' "$YELLOW" "$RESET" "$1"; }
 fail() { printf '%serror:%s %s\n' "$RED" "$RESET" "$1" >&2; exit 1; }
@@ -171,7 +206,7 @@ apply_selection_delta() { # old new dry
   tmp="$(mktemp "${TMPDIR:-/tmp}/dotfiles-selection.XXXXXX")"
   selection_render_brewfile_ids "$added" "$tmp"
   if grep -qE '^(brew|cask|vscode|npm) ' "$tmp"; then
-    step "Selection: install"
+    step_plain "Selection: install"
     if (( dry )); then
       sed 's/^/    /' "$tmp"
     elif ! HOMEBREW_NO_AUTO_UPDATE=1 brew bundle install --file="$tmp"; then
@@ -183,7 +218,7 @@ apply_selection_delta() { # old new dry
   added_configs="$(selection_ids_of_kind "$added" config)"
   removed_configs="$(selection_ids_of_kind "$removed" config)"
   if [[ -n "$added_configs" || -n "$removed_configs" ]]; then
-    step "Backup"
+    step_plain "Backup"
     backup_drifted_dotfiles
   fi
 
@@ -197,7 +232,7 @@ apply_selection_delta() { # old new dry
     done <<< "$added_configs"
 
     if (( ${#paths[@]} > 0 )); then
-      step "Selection: apply configs"
+      step_plain "Selection: apply configs"
       if (( dry )); then
         printf '    would apply %s\n' "${paths[@]}"
       elif ! chezmoi apply --force --verbose "${paths[@]}" 2>&1 | sed 's/^/    /'; then
@@ -207,7 +242,7 @@ apply_selection_delta() { # old new dry
   fi
 
   if [[ -n "$removed_configs" ]]; then
-    step "Selection: remove configs"
+    step_plain "Selection: remove configs"
     if (( dry )); then
       info "would prune configs for: $(printf '%s' "$removed_configs" | tr '\n' ' ')"
     else
@@ -226,7 +261,7 @@ apply_selection_delta() { # old new dry
   done <<< "$removed"
 
   if [[ -n "$added_macos" ]]; then
-    step "Selection: macOS defaults"
+    step_plain "Selection: macOS defaults"
     if macos_load_manifest; then
       macos_apply_groups "$added_macos" "$dry"
       if [[ -n "$MACOS_REPORT" ]]; then
@@ -244,7 +279,7 @@ apply_selection_delta() { # old new dry
   fi
 
   if [[ -n "$(selection_ids_of_kind "$removed" brew)$(selection_ids_of_kind "$removed" cask)$(selection_ids_of_kind "$removed" vscode)$(selection_ids_of_kind "$removed" npm)" ]]; then
-    step "Selection: uninstall"
+    step_plain "Selection: uninstall"
     if (( dry )); then
       info "would uninstall: $(printf '%s' "$removed" | tr '\n' ' ')"
     else
@@ -406,7 +441,7 @@ else
     else
       apply_selection_delta "$SELECTION_BEFORE" "$SELECTED" 0
       if (( PRUNE )); then
-        step "Prune deselected configs"
+        step_plain "Prune deselected configs"
         REMOVED="$(selection_prune_paths)"
         info "removed $REMOVED path(s)"
       fi

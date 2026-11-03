@@ -161,6 +161,8 @@ drifted → `chezmoi apply` (forced, because the archive preserved the live copi
 macOS preference groups applied with `defaults` → agent skills cloned from their upstreams and
 linked into `~/.agents/skills` → Oh My Zsh and powerlevel10k at their pinned commits → Ghostty
 terminfo → tmux plugins at their pinned refs → yazi packages → `scripts/verify.sh`.
+Each step is prefixed with a progress counter; on a terminal it renders as a block bar, and
+when output is piped it falls back to plain `[n/total]`.
 
 The selection file is machine state, never repository content. `--select` applies the
 selection delta and requires chezmoi; on a machine that has not been bootstrapped it falls back
