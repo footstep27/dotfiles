@@ -29,6 +29,11 @@ The set of optional items checked for one machine and saved outside the reposito
 differ only by their selection.
 _Avoid_: profile, preset, machine type
 
+**Selection delta**:
+The difference between the saved selection and the selection reviewed with `--select`, applied
+by bootstrap.
+_Avoid_: diff, changeset
+
 **Optional category**:
 One editable manifest under `Brewfile.d/` that groups optional items for display and maps them
 to a generated Brewfile fragment.

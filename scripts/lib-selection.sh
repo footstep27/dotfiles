@@ -266,6 +266,76 @@ selection_save() {
   done
 }
 
+# Compare two newline-delimited selections. Both are expected in the
+# leading-sentinel form used by SELECTED, so membership is a simple substring.
+selection_diff_added() { # old new
+  local old="$1" new="$2" line
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$old" in
+      *$'\n'"$line"$'\n'*) ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done <<< "$new"
+  return 0
+}
+
+selection_diff_removed() { # old new
+  local old="$1" new="$2" line
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$new" in
+      *$'\n'"$line"$'\n'*) ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done <<< "$old"
+  return 0
+}
+
+selection_ids_of_kind() { # ids kind
+  local ids="$1" wanted="$2" line i
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    i="$(item_index "$line")" || continue
+    if [[ "${ITEM_KIND[$i]}" == "$wanted" ]]; then printf '%s\n' "$line"; fi
+  done <<< "$ids"
+  return 0
+}
+
+# Render a Brewfile containing only the given ids and the taps they require.
+# Used by --select so installing a newly selected package does not re-run the
+# whole selected set.
+selection_render_brewfile_ids() { # ids output
+  local ids="$1" out="$2" line i kind name r tap seen=$'\n'
+  {
+    printf '# Generated for a selection delta — do not edit.\n'
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      i="$(item_index "$line")" || continue
+      for r in ${ITEM_REQUIRES[$i]//,/ }; do
+        case "$r" in
+          tap:*)
+            tap="tap \"${r#tap:}\""
+            case "$seen" in
+              *$'\n'"$tap"$'\n'*) ;;
+              *) printf '%s\n' "$tap"; seen="$seen$tap"$'\n' ;;
+            esac
+            ;;
+        esac
+      done
+    done <<< "$ids"
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      i="$(item_index "$line")" || continue
+      kind="${ITEM_KIND[$i]}"; name="${ITEM_NAME[$i]}"
+      case "$kind" in
+        brew|cask|vscode|npm) printf '%s "%s"\n' "$kind" "$name" ;;
+      esac
+    done <<< "$ids"
+  } > "$out"
+  return 0
+}
+
 # The selection file only records what is checked, so it cannot tell a newly
 # added inventory item from one the user deliberately left unchecked. Keep a
 # snapshot of every known item id and compare against it on the next run.
@@ -492,12 +562,19 @@ selection_validate() {
   return 1
 }
 
-selection_prune_paths() {
-  local i p target n=0
+selection_prune_paths() { # [ids]
+  local only_ids="${1:-}" i p target n=0
+  [[ -n "$only_ids" ]] && only_ids=$'\n'"$only_ids"$'\n'
   i=0
   while (( i < ITEM_N )); do
     if [[ -n "${ITEM_PATHS[$i]}" ]] && [[ "${ITEM_LOCKED[$i]}" != 1 ]] \
        && ! sel_has "${ITEM_ID[$i]}"; then
+      if [[ -n "$only_ids" ]]; then
+        case "$only_ids" in
+          *$'\n'"${ITEM_ID[$i]}"$'\n'*) ;;
+          *) i=$((i + 1)); continue ;;
+        esac
+      fi
       for p in ${ITEM_PATHS[$i]//,/ }; do
         case "$p" in
           /*|*..*) printf 'skip unsafe path: %s\n' "$p" >&2; continue ;;

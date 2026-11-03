@@ -147,8 +147,12 @@ config and macOS toggles for the required tools. Each row carries a one-sentence
 and `/` matches against names and descriptions. `space` toggles, `a`/`n` select or clear a
 category, `A`/`N` do the same for everything, and `enter` saves. Optional
 packages and macOS groups start unchecked; required packages are locked. Later runs reuse the
-saved selection, so `--select` is the command to revisit it. When a manifest gains items,
-bootstrap warns that the inventory changed and points at `--select`.
+saved selection. `./bootstrap.sh --select` reviews it and applies only the difference: newly
+selected packages and configs are installed/applied, newly deselected optional packages are
+uninstalled, and newly deselected configs are pruned. A normal `./bootstrap.sh` still runs the
+full idempotent setup. `--select` exits after the diff; run `./scripts/verify.sh` for the full
+check. When a manifest gains items, bootstrap warns that the inventory changed and points at
+`--select`.
 
 `bootstrap.sh` is idempotent and runs, in order: Command Line Tools pre-flight → Homebrew
 (installing it if absent) → optional inventory → `Brewfile` → selected optional packages →
@@ -158,9 +162,10 @@ macOS preference groups applied with `defaults` → agent skills cloned from the
 linked into `~/.agents/skills` → Oh My Zsh and powerlevel10k at their pinned commits → Ghostty
 terminfo → tmux plugins at their pinned refs → yazi packages → `scripts/verify.sh`.
 
-The selection file is machine state, never repository content. Deselecting an item only skips
-its installation; it never uninstalls anything. To remove a config that is no longer selected,
-run `./bootstrap.sh --prune`.
+The selection file is machine state, never repository content. `--select` applies the
+selection delta and requires chezmoi; on a machine that has not been bootstrapped it falls back
+to the full setup. Deselecting a macOS group stops future application but does not undo it; use
+`--revert-macos` for that. `--prune` remains for configs left behind by an older selection.
 
 The archive lands in `~/.dotfiles-backup-<timestamp>/dotfiles.tar.gz`; restore it with
 `tar -xzf … -C /`. Later runs only archive when local files have drifted from the repo.
@@ -353,6 +358,8 @@ nothing to download by hand.
 | `~/.profile` changes after apply | Docker Desktop rewrites its PATH block with an absolute home path. Bootstrap archives drift and forces the repo version; rerun `./bootstrap.sh` after Docker touches it. |
 | macOS defaults drifted | Rerun `./bootstrap.sh` to reapply the selected groups, or `./bootstrap.sh --revert-macos` to undo them. |
 | TextEdit/Safari defaults skipped | They are in `macos:sandboxed`, which needs Full Disk Access for the terminal. Grant it in System Settings → Privacy & Security, or set those keys by hand. |
+| `--select` did not apply changes | It needs chezmoi; on a machine that has not been bootstrapped it falls back to the full run. |
+| A deselected config is still present | `--select` prunes only what changed in that review. Run `./bootstrap.sh --prune` for configs left by an older selection. |
 | Want to see the plan first | `chezmoi apply --dry-run --verbose` |
 
 ## Layout
@@ -401,6 +408,10 @@ python3 ~/.agents/skills/diagram-design/scripts/export_svg.py \
 - **Optional software is a per-machine selection, not a profile.** One checklist, one saved
   selection per machine, and configs that follow their package or toggle independently: see
   [`docs/adr/0005-interactive-optional-inventory.md`](docs/adr/0005-interactive-optional-inventory.md).
+- **Reviewing the selection applies only the diff.** `--select` installs added packages,
+  uninstalls removed optional ones, applies added configs and macOS groups, and prunes removed
+  configs instead of re-running the full setup: see
+  [`docs/adr/0008-selection-review-applies-only-the-diff.md`](docs/adr/0008-selection-review-applies-only-the-diff.md).
 - **Option stays a character key** on the German layout (`macos-option-as-alt = false`).
   Option types `@ { } [ ] | \ ~ €`; word movement lives on `Ctrl+Left/Right` and
   `Ctrl+Backspace`, bound in `.zshrc`.

@@ -128,6 +128,36 @@ else
   fail "new inventory item" "addition not detected"
 fi
 
+OLD=$'\nconfig:ghostty\nconfig:tmux\n'
+NEW=$'\nconfig:ghostty\nbrew:ghidra\n'
+ADDED="$(selection_diff_added "$OLD" "$NEW")"
+REMOVED="$(selection_diff_removed "$OLD" "$NEW")"
+if [[ "$ADDED" == "brew:ghidra" && "$REMOVED" == "config:tmux" ]]; then
+  pass "selection diff" "one addition and one removal"
+else
+  fail "selection diff" "got added='$ADDED' removed='$REMOVED'"
+fi
+
+printf '%s\n' brew:ghidra > "$TMP/delta-ids"
+selection_render_brewfile_ids "$(cat "$TMP/delta-ids")" "$TMP/delta.brewfile"
+if grep -qx 'brew "ghidra"' "$TMP/delta.brewfile" && ! grep -q 'jadx' "$TMP/delta.brewfile"; then
+  pass "delta brewfile" "only the added package"
+else
+  fail "delta brewfile" "unexpected contents"
+fi
+
+SELECTED=$'\n'
+mkdir -p "$HOME/.config/opencode" "$HOME/.config/yazi"
+printf 'x\n' > "$HOME/.config/opencode/cli.json"
+printf 'x\n' > "$HOME/.config/yazi/yazi.toml"
+REMOVED="$(selection_prune_paths $'\nconfig:opencode\n')"
+if [[ "$REMOVED" == "1" ]] && [[ ! -e "$HOME/.config/opencode/cli.json" ]] \
+   && [[ -e "$HOME/.config/yazi/yazi.toml" ]]; then
+  pass "delta prune" "only the removed config"
+else
+  fail "delta prune" "removed $REMOVED path(s)"
+fi
+
 printf '\n'
 if (( FAILURES == 0 )); then
   printf '%s%d failed%s\n\n' "$GREEN" "$FAILURES" "$RESET"; exit 0

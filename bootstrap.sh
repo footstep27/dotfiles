@@ -2,14 +2,14 @@
 # Take a bare Mac to the applied dotfiles setup.
 #
 #   ./bootstrap.sh                     # do it, reusing the saved selection
-#   ./bootstrap.sh --select            # edit the optional inventory
+#   ./bootstrap.sh --select            # review the selection and apply only its diff
 #   ./bootstrap.sh --all-optional      # select every non-conflicting optional item
 #   ./bootstrap.sh --reset-selection   # forget the saved selection
 #   ./bootstrap.sh --prune             # delete configs the selection excludes
 #   ./bootstrap.sh --revert-macos      # undo the macOS defaults bootstrap applied
 #   ./bootstrap.sh --dry-run           # show the plan, change nothing
 #
-# Idempotent: safe to re-run after a partial failure or to pick up updates.
+# Idempotent: safe to re-run. --select applies only the selection diff and exits.
 # Order matters — Command Line Tools → brew → optional inventory → required
 # packages → optional packages → chezmoi/age → apply → macOS defaults → agent
 # skills → shell framework → tmux plugins → yazi packages → verify — because
@@ -71,6 +71,192 @@ info() { printf '    %s%s%s\n' "$DIM" "$1" "$RESET"; }
 warn() { printf '%s    warn:%s %s\n' "$YELLOW" "$RESET" "$1"; }
 fail() { printf '%serror:%s %s\n' "$RED" "$RESET" "$1" >&2; exit 1; }
 
+backup_drifted_dotfiles() {
+  if (( DRY_RUN )); then
+    info "would back up existing dotfiles that differ from the repo"
+    return 0
+  fi
+
+  if command -v chezmoi >/dev/null 2>&1 && [[ -n "$(chezmoi diff 2>/dev/null || true)" ]]; then
+    local bk f
+    bk="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$bk"
+    # Every managed file that exists gets archived, not only the differing
+    # ones: a restore is easier than reconstructing which files were involved.
+    chezmoi managed --path-style absolute | while IFS= read -r f; do
+      if [[ -f "$f" ]]; then printf '%s\n' "$f"; fi
+    done | tar -czf "$bk/dotfiles.tar.gz" -T - 2>/dev/null || true
+    printf '%s' "$ROOT" > "$bk/source-dir"
+    if [[ -s "$bk/dotfiles.tar.gz" ]]; then
+      info "backed up to $bk"
+      info "restore with: tar -xzf $bk/dotfiles.tar.gz -C /"
+    else
+      rmdir "$bk" 2>/dev/null || true
+      info "nothing to back up"
+    fi
+  else
+    info "working tree already matches the repo — no backup needed"
+  fi
+}
+
+uninstall_selection_packages() { # ids
+  local ids="$1" kind line i name
+  for kind in vscode npm cask brew; do
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      i="$(item_index "$line")" || continue
+      [[ "${ITEM_LOCKED[$i]}" == 1 ]] && continue
+      [[ "${ITEM_KIND[$i]}" == "$kind" ]] || continue
+      name="${ITEM_NAME[$i]}"
+      case "$kind" in
+        vscode)
+          if ! command -v code >/dev/null 2>&1; then
+            warn "VS Code CLI missing — could not uninstall extension $name"
+          elif code --list-extensions 2>/dev/null | grep -Fqx "$name"; then
+            if code --uninstall-extension "$name" >/dev/null 2>&1; then
+              info "uninstalled VS Code extension $name"
+            else
+              warn "could not uninstall VS Code extension $name"
+            fi
+          fi
+          ;;
+        npm)
+          if ! command -v npm >/dev/null 2>&1; then
+            warn "npm missing — could not uninstall package $name"
+          elif npm uninstall -g "$name" >/dev/null 2>&1; then
+            info "uninstalled npm package $name"
+          else
+            warn "could not uninstall npm package $name"
+          fi
+          ;;
+        cask)
+          if brew list --cask "$name" >/dev/null 2>&1; then
+            if brew uninstall --cask "$name" >/dev/null 2>&1; then
+              info "uninstalled cask $name"
+            else
+              warn "could not uninstall cask $name"
+            fi
+          fi
+          ;;
+        brew)
+          if brew list --formula "$name" >/dev/null 2>&1; then
+            if brew uninstall "$name" >/dev/null 2>&1; then
+              info "uninstalled formula $name"
+            else
+              warn "could not uninstall formula $name"
+            fi
+          fi
+          ;;
+      esac
+    done <<< "$ids"
+  done
+}
+
+# Apply exactly the difference between two selections. Called only by
+# `--select`, and only when chezmoi is available: a bare machine falls back to
+# the full bootstrap instead.
+apply_selection_delta() { # old new dry
+  local old="$1" new="$2" dry="$3"
+  local added removed line i path added_configs removed_configs
+  local added_macos="" removed_macos="" tmp
+  local -a paths=()
+
+  added="$(selection_diff_added "$old" "$new")"
+  removed="$(selection_diff_removed "$old" "$new")"
+  if [[ -z "$added" && -z "$removed" ]]; then
+    info "no selection changes"
+    return 0
+  fi
+
+  tmp="$(mktemp "${TMPDIR:-/tmp}/dotfiles-selection.XXXXXX")"
+  selection_render_brewfile_ids "$added" "$tmp"
+  if grep -qE '^(brew|cask|vscode|npm) ' "$tmp"; then
+    step "Selection: install"
+    if (( dry )); then
+      sed 's/^/    /' "$tmp"
+    elif ! HOMEBREW_NO_AUTO_UPDATE=1 brew bundle install --file="$tmp"; then
+      warn "some newly selected packages failed to install"
+    fi
+  fi
+  rm -f "$tmp"
+
+  added_configs="$(selection_ids_of_kind "$added" config)"
+  removed_configs="$(selection_ids_of_kind "$removed" config)"
+  if [[ -n "$added_configs" || -n "$removed_configs" ]]; then
+    step "Backup"
+    backup_drifted_dotfiles
+  fi
+
+  if [[ -n "$added_configs" ]]; then
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      i="$(item_index "$line")" || continue
+      for path in ${ITEM_PATHS[$i]//,/ }; do
+        paths+=("$HOME/$path")
+      done
+    done <<< "$added_configs"
+
+    if (( ${#paths[@]} > 0 )); then
+      step "Selection: apply configs"
+      if (( dry )); then
+        printf '    would apply %s\n' "${paths[@]}"
+      elif ! chezmoi apply --force --verbose "${paths[@]}" 2>&1 | sed 's/^/    /'; then
+        warn "some selected configs failed to apply"
+      fi
+    fi
+  fi
+
+  if [[ -n "$removed_configs" ]]; then
+    step "Selection: remove configs"
+    if (( dry )); then
+      info "would prune configs for: $(printf '%s' "$removed_configs" | tr '\n' ' ')"
+    else
+      REMOVED="$(selection_prune_paths "$removed_configs")"
+      info "removed $REMOVED path(s)"
+    fi
+  fi
+
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$line" in macos:*) added_macos="$added_macos${line#macos:}"$'\n' ;; esac
+  done <<< "$added"
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$line" in macos:*) removed_macos="$removed_macos${line#macos:}"$'\n' ;; esac
+  done <<< "$removed"
+
+  if [[ -n "$added_macos" ]]; then
+    step "Selection: macOS defaults"
+    if macos_load_manifest; then
+      macos_apply_groups "$added_macos" "$dry"
+      if [[ -n "$MACOS_REPORT" ]]; then
+        while IFS=$'\t' read -r level message; do
+          [[ -z "$level" ]] && continue
+          if [[ "$level" == "warn" ]]; then warn "$message"; else info "$message"; fi
+        done <<< "$MACOS_REPORT"
+      fi
+    else
+      warn "scripts/macos-defaults.tsv: ${MACOS_CONF_ERRORS//$'\n'/; }"
+    fi
+  fi
+  if [[ -n "$removed_macos" ]]; then
+    info "deselected macOS groups stay applied; use --revert-macos to undo"
+  fi
+
+  if [[ -n "$(selection_ids_of_kind "$removed" brew)$(selection_ids_of_kind "$removed" cask)$(selection_ids_of_kind "$removed" vscode)$(selection_ids_of_kind "$removed" npm)" ]]; then
+    step "Selection: uninstall"
+    if (( dry )); then
+      info "would uninstall: $(printf '%s' "$removed" | tr '\n' ' ')"
+    else
+      uninstall_selection_packages "$removed"
+    fi
+  fi
+
+  if (( ! dry )); then
+    info "selection changes applied"
+  fi
+}
+
 if (( DRY_RUN )); then
   printf '%sDRY RUN%s — nothing will be modified\n\n' "$YELLOW" "$RESET"
 fi
@@ -128,6 +314,7 @@ SELECTION_SAVED=0
 SELECTION_REVIEWED=0
 selection_load_file && SELECTION_SAVED=1 || true
 selection_prune_dependents
+SELECTION_BEFORE="$SELECTED"
 
 # A saved selection only records what is checked, so adding an item to a
 # manifest cannot change it. Point at the checklist when the inventory moved;
@@ -209,6 +396,23 @@ else
   selection_save
   if (( SELECTION_REVIEWED )); then selection_write_inventory; fi
   info "selected $(selection_selected_count)/$(selection_optional_count) optional items"
+
+  if (( DO_SELECT )); then
+    if ! command -v chezmoi >/dev/null 2>&1; then
+      warn "chezmoi not installed — running the full bootstrap instead"
+    elif [[ ! -f "$HOME/.config/chezmoi/chezmoi.toml" ]] \
+         || ! grep -q "^sourceDir *= *\"$ROOT\"" "$HOME/.config/chezmoi/chezmoi.toml"; then
+      warn "chezmoi source is not wired to this checkout — running the full bootstrap instead"
+    else
+      apply_selection_delta "$SELECTION_BEFORE" "$SELECTED" 0
+      if (( PRUNE )); then
+        step "Prune deselected configs"
+        REMOVED="$(selection_prune_paths)"
+        info "removed $REMOVED path(s)"
+      fi
+      exit 0
+    fi
+  fi
 fi
 
 # ------------------------------------------------------- 4. Required packages
@@ -289,29 +493,7 @@ fi
 
 # ------------------------------------------------------------- 7. Backup drift
 step "Backup"
-if (( DRY_RUN )); then
-  info "would back up existing dotfiles that differ from the repo"
-else
-  if command -v chezmoi >/dev/null 2>&1 && [[ -n "$(chezmoi diff 2>/dev/null || true)" ]]; then
-    BK="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
-    mkdir -p "$BK"
-    # Every managed file that exists gets archived, not only the differing ones:
-    # a restore is easier than reconstructing which files were involved.
-    chezmoi managed --path-style absolute | while IFS= read -r f; do
-      if [[ -f "$f" ]]; then printf '%s\n' "$f"; fi
-    done | tar -czf "$BK/dotfiles.tar.gz" -T - 2>/dev/null || true
-    printf '%s' "$ROOT" > "$BK/source-dir"
-    if [[ -s "$BK/dotfiles.tar.gz" ]]; then
-      info "backed up to $BK"
-      info "restore with: tar -xzf $BK/dotfiles.tar.gz -C /"
-    else
-      rmdir "$BK" 2>/dev/null || true
-      info "nothing to back up"
-    fi
-  else
-    info "working tree already matches the repo — no backup needed"
-  fi
-fi
+backup_drifted_dotfiles
 
 # ---------------------------------------------------------------- 8. Apply
 step "Apply"
