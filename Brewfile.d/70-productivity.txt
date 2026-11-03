@@ -1,6 +1,7 @@
 # name: Productivity
 cask	bloom		Column-based file manager for the Mac.
 cask	cyberduck		File transfer client for FTP, SFTP, WebDAV and cloud storage.
+cask	devonthink		Document and knowledge manager with search, sync and automation.
 cask	home-assistant		Desktop client for Home Assistant.
 cask	joplin		Open-source note-taking and to-do app with sync.
 cask	moneymoney		German banking and personal finance manager.
