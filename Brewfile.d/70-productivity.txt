@@ -4,6 +4,7 @@ cask	cyberduck		File transfer client for FTP, SFTP, WebDAV and cloud storage.
 cask	devonthink		Document and knowledge manager with search, sync and automation.
 cask	home-assistant		Desktop client for Home Assistant.
 cask	joplin		Open-source note-taking and to-do app with sync.
+cask	microsoft-office		Microsoft 365 Office suite: Word, Excel, PowerPoint, Outlook and OneNote.
 cask	moneymoney		German banking and personal finance manager.
 cask	nextcloud		Desktop sync client for Nextcloud servers.
 cask	obsidian		Markdown knowledge base with links and plugins.
