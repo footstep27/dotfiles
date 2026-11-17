@@ -1,5 +1,6 @@
 # name: Dev CLI
 config	opencode	paths=.config/opencode/opencode.jsonc,.config/opencode/cli.json	Agent, model and CLI settings for OpenCode.
+cask	claude-code		Anthropic's terminal coding agent, the shell counterpart to the desktop Code tab.
 brew	cmake		Cross-platform build system generator for C and C++.
 brew	cocoapods		Dependency manager for Swift and Objective-C Xcode projects.
 brew	docker		Command-line Docker client and container tooling.

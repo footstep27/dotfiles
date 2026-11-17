@@ -1,4 +1,5 @@
 # name: Dev apps
+cask	claude		Anthropic's Claude desktop app, whose Code tab runs Claude Code.
 cask	codexbar		Menu bar app for tracking agentic coding limits and usage.
 cask	cursor		AI-first code editor with chat, inline edits and agent mode.
 cask	docker-desktop		Desktop app for building and running Docker containers.

@@ -34,6 +34,11 @@ The difference between the saved selection and the selection reviewed with `--se
 by bootstrap.
 _Avoid_: diff, changeset
 
+**Optional item**:
+A package, config toggle or macOS preference group that a machine may select; its absence is not
+a verification failure.
+_Avoid_: extra, optional package
+
 **Optional category**:
 One editable manifest under `Brewfile.d/` that groups optional items for display and maps them
 to a generated Brewfile fragment.
